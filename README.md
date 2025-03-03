@@ -2,7 +2,7 @@
   codewithwaheed.com
 </h1>
 
-![demo](https://raw.githubusercontent.com/codewithwaheed/main/src/images/demo.png)
+![demo](https://raw.githubusercontent.com/codewithwaheed/developer-portfolio/main/src/images/demo.png)
 
 ## 🛠 Installation & Set Up
 

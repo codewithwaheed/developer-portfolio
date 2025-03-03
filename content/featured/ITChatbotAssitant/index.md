@@ -3,7 +3,7 @@ title: 'IT Support Assistant - OpenAI'
 cover: './demo.png'
 tech:
   - 'Node.js'
-  - 'React'
+  - 'React.js'
   - 'Tailwind CSS'
   - 'OpenAI API'
   - 'Socket.io'
