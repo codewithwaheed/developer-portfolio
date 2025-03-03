@@ -4,7 +4,7 @@ title: 'IT Support Assistant - OpenAI'
 github: 'https://github.com/codewithwaheed/openai-nodejs-chat-assistant'
 external: 'https://medium.com/javascript-in-plain-english/how-to-create-an-automated-chatbot-with-openais-assistant-and-node-js-9b9aea0748a4'
 tech:
- - 'Node.js'
+  - 'Node.js'
   - 'React'
   - 'Tailwind CSS'
   - 'OpenAI API'
