@@ -100,14 +100,14 @@
   }
 }
 
-html,
-body {
+html:has(.agentos-root),
+body:has(.agentos-root) {
   height: 100%;
+  overflow: hidden;
 }
 
 body {
   margin: 0;
-  overflow: hidden;
   background: var(--wall-base);
   color: var(--fg);
   font-family: var(--font-sans);

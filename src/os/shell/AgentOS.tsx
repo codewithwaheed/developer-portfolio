@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import type { PortfolioContent } from '@/content/types';
 import { useOS } from '../store';
-import { isAppId, type AppId } from '../apps/registry';
+import type { AppId } from '../apps/registry';
 import { MeApp } from '../apps/MeApp';
 import { ExperienceApp } from '../apps/ExperienceApp';
 import { ProjectsApp } from '../apps/ProjectsApp';
@@ -22,6 +22,7 @@ import { Dock } from './Dock';
 import { Boot } from './Boot';
 import { Lock } from './Lock';
 import { initialPhase, type Phase } from './bootFlow';
+import { parseDeepLink } from './deepLink';
 import { safeStorage } from '@/lib/safeStorage';
 import { play, unlockAudio } from '@/sound/sound';
 import { useAgent } from '@/agent/agentStore';
@@ -101,9 +102,13 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
     sync();
     window.addEventListener('resize', sync);
 
-    const app = new URLSearchParams(window.location.search).get('app');
-    const deepLink = isAppId(app);
-    if (deepLink) openApp(app);
+    const link = parseDeepLink(
+      window.location.search,
+      content.posts.map((p) => p.slug),
+    );
+    const deepLink = link.app !== undefined;
+    if (link.app) openApp(link.app);
+    if (link.post) useOS.getState().openPost(link.post);
 
     const reducedMotion = prefersReducedMotion();
     setPhase(
@@ -133,7 +138,7 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
       window.removeEventListener('pointerdown', unlock);
       window.removeEventListener('keydown', unlock);
     };
-  }, []);
+  }, [content.posts]);
 
   const onBootDone = useCallback(() => setPhase('lock'), []);
   const onWake = useCallback(() => {
@@ -150,7 +155,7 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
   return (
     // reducedMotion="user": every Motion animation in the shell honours the OS setting.
     <MotionConfig reducedMotion="user">
-      <div className="fixed inset-0 overflow-hidden">
+      <div className="agentos-root fixed inset-0 overflow-hidden">
         <Wallpaper thinking={agentStatus === 'thinking'} />
         {isMobile ? (
           <MobileShell agentStatus={menuStatus} renderApp={renderMobileApp} />

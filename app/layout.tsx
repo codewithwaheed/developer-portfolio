@@ -5,10 +5,24 @@ import { siteConfig } from '@/config/site';
 import { themeScript } from '@/os/themeScript';
 import './globals.css';
 
+const description =
+  'Waheed Ahmed is a full-stack software engineer who specializes in building exceptional digital experiences.';
+const title = `${siteConfig.name} · ${siteConfig.title}`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
-  title: `${siteConfig.name} | ${siteConfig.title}`,
-  description: `${siteConfig.name}, ${siteConfig.title}.`,
+  title,
+  description,
+  alternates: { canonical: '/' },
+  openGraph: {
+    title,
+    description,
+    url: '/',
+    siteName: siteConfig.name,
+    images: ['/og.png'],
+    type: 'website',
+  },
+  twitter: { card: 'summary_large_image', title, description, images: ['/og.png'] },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
