@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'motion/react';
-import { IconSparkles, IconSteeringWheel, IconX } from '@tabler/icons-react';
+import { IconSparkles, IconSteeringWheel } from '@tabler/icons-react';
 import { play } from '@/sound/sound';
 import { useAgent } from '../agentStore';
+import { ChatPanel } from './ChatPanel';
 
 export const DEFAULT_SUGGESTIONS = [
   'Show me your AI work',
@@ -13,7 +14,6 @@ export const DEFAULT_SUGGESTIONS = [
   'Who are you?',
 ];
 
-const STREAM_MS = 1200;
 const SPRING = { type: 'spring', stiffness: 420, damping: 32 } as const;
 const SHEET_SPRING = { type: 'spring', stiffness: 360, damping: 34, mass: 0.9 } as const;
 const SWIPE_PX = 36;
@@ -27,28 +27,8 @@ interface Props {
   variant?: 'bar' | 'sheet';
   /** False while boot/lock covers the shell: ⌘K / Ctrl+K is ignored. */
   shortcutEnabled?: boolean;
-}
-
-/** Reveal `text` character by character over ~1.2s (instantly under reduced motion). */
-function useStreamed(text: string, instant: boolean): string {
-  const [shown, setShown] = useState(text);
-  useEffect(() => {
-    if (instant || !text) {
-      setShown(text);
-      return;
-    }
-    let raf = 0;
-    const t0 = performance.now();
-    const tick = (now: number) => {
-      const n = Math.ceil(text.length * Math.min(1, (now - t0) / STREAM_MS));
-      setShown(text.slice(0, n));
-      if (n < text.length) raf = requestAnimationFrame(tick);
-    };
-    setShown('');
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [text, instant]);
-  return shown;
+  /** Project id -> title, for the fit report's project buttons. */
+  projectTitles?: Record<string, string>;
 }
 
 /** Glass prompt bar above the dock. ⌘K / Ctrl+K focuses it. */
@@ -58,20 +38,31 @@ export function AgentBar({
   suggestions = DEFAULT_SUGGESTIONS,
   variant = 'bar',
   shortcutEnabled = true,
+  projectTitles = {},
 }: Props) {
   const status = useAgent((s) => s.status);
-  const reply = useAgent((s) => s.reply);
-  const reduce = useReducedMotion() ?? false;
-  const streamed = useStreamed(reply, reduce);
+  const messageCount = useAgent((s) => s.messages.length);
   const [value, setValue] = useState('');
   const barRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [expanded, setExpanded] = useState(false);
+  const [chatOpen, setChatOpen] = useState(true);
 
-  // The sheet opens itself when the agent has something to say.
+  // The chat (and the phone sheet) open themselves whenever the conversation grows.
   useEffect(() => {
-    if (reply) setExpanded(true);
-  }, [reply]);
+    if (messageCount > 0) {
+      setChatOpen(true);
+      setExpanded(true);
+    }
+  }, [messageCount]);
+
+  // Grow the prompt with its content (pasted job descriptions), up to a few lines.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, [value]);
 
   // ⌘K / Ctrl+K from anywhere (but not from behind the boot/lock screen).
   useEffect(() => {
@@ -117,38 +108,13 @@ export function AgentBar({
 
   const replyBubble = (
     <AnimatePresence>
-      {reply && (
-        <motion.div
-          key="reply"
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          // Announce once, when the streamed text is complete.
-          aria-busy={streamed !== reply}
-          initial={{ opacity: 0, y: 8, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 6, transition: { duration: 0.15 } }}
-          transition={SPRING}
-          className="glass glass-strong pointer-events-auto relative w-full max-w-[560px] rounded-2xl py-3 pr-9 pl-4 text-[13.5px] leading-relaxed"
-        >
-          {/* One copy of the text: the unrevealed tail is laid out but invisible. */}
-          <p className="whitespace-pre-wrap">
-            {streamed}
-            {streamed.length < reply.length && (
-              <span aria-hidden className="invisible">
-                {reply.slice(streamed.length)}
-              </span>
-            )}
-          </p>
-          <button
-            type="button"
-            aria-label="Dismiss reply"
-            onClick={() => useAgent.getState().setReply('')}
-            className="absolute top-2.5 right-2.5 grid size-5 place-items-center rounded-md text-[var(--fg-muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]"
-          >
-            <IconX size={12} stroke={2.2} />
-          </button>
-        </motion.div>
+      {chatOpen && (
+        <ChatPanel
+          key="chat"
+          compact={variant === 'sheet'}
+          projectTitles={projectTitles}
+          onClose={variant === 'bar' ? () => setChatOpen(false) : undefined}
+        />
       )}
     </AnimatePresence>
   );
@@ -182,29 +148,30 @@ export function AgentBar({
   );
 
   const inputRow = (
-    <div className="glass pointer-events-auto flex h-12 w-full max-w-[560px] items-center gap-2 rounded-2xl pr-1.5 pl-3.5 focus-within:shadow-[var(--glass-shadow-focus),0_0_0_3px_var(--accent-soft)]">
+    <div className="glass pointer-events-auto flex min-h-12 w-full max-w-[560px] items-center gap-2 rounded-2xl py-1.5 pr-1.5 pl-3.5 focus-within:shadow-[var(--glass-shadow-focus),0_0_0_3px_var(--accent-soft)]">
       <IconSparkles
         aria-hidden
         size={17}
         stroke={1.8}
         className={`shrink-0 ${busy ? 'text-[var(--think)] motion-safe:animate-pulse' : 'text-[var(--accent)]'}`}
       />
-      <input
+      <textarea
         ref={inputRef}
-        type="text"
+        rows={1}
         aria-label="Ask AgentOS"
-        placeholder="Ask AgentOS anything…"
+        placeholder="Ask anything, or paste a job description…"
         value={value}
         onChange={(e) => setValue(e.target.value)}
+        onFocus={() => setChatOpen(true)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault();
             submit(value);
           } else if (e.key === 'Escape') {
             e.currentTarget.blur();
           }
         }}
-        className="h-full min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[var(--fg-faint)]"
+        className="max-h-[120px] min-w-0 flex-1 resize-none self-center bg-transparent py-1 text-[14px] leading-5 outline-none placeholder:text-[var(--fg-faint)]"
       />
       <kbd className="hidden shrink-0 rounded-md bg-[var(--control)] px-1.5 py-0.5 font-sans text-[11px] text-[var(--fg-muted)] sm:block">
         ⌘K

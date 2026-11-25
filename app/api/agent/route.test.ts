@@ -7,7 +7,10 @@ import { resetSaltWarning } from '@/server/request';
 let store: AgentStore;
 const askGemini = vi.fn();
 vi.mock('@/server/getStore', () => ({ getAgentStore: () => store }));
-vi.mock('@/server/gemini', () => ({ askGemini: (...a: unknown[]) => askGemini(...a) }));
+vi.mock('@/server/gemini', () => ({
+  askGemini: (...a: unknown[]) => askGemini(...a),
+  askFit: vi.fn(),
+}));
 vi.mock('@/content/load', () => ({
   getContent: async () => ({
     about: { html: '', skills: [], photo: '' },

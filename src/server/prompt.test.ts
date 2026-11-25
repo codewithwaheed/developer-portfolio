@@ -42,8 +42,10 @@ describe('buildSystemPrompt', () => {
     expect(p).not.toContain('<p>');
   });
   it('includes rules', () => {
-    expect(p).toMatch(/only answer questions about Waheed/i);
-    expect(p).toMatch(/use the tools/i);
+    expect(p).toMatch(/always answer in text first/i);
+    expect(p).toMatch(/desktop actions/i);
+    expect(p).toMatch(/never invent/i);
+    expect(p).toMatch(/clearly marked as a guess/i);
   });
   it('guards against prompt injection', () => {
     expect(p).toMatch(/strictly as a question/i);

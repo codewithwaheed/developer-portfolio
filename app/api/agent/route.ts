@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getContent } from '@/content/load';
-import { askGemini } from '@/server/gemini';
+import { askFit, askGemini } from '@/server/gemini';
 import { handleAgentRequest } from '@/server/agentHandler';
 import { getAgentStore } from '@/server/getStore';
 import { clientIp, ipHashSalt } from '@/server/request';
@@ -10,8 +10,9 @@ export const runtime = 'nodejs';
 
 export async function POST(req: Request): Promise<Response> {
   let question: unknown;
+  let history: unknown;
   try {
-    question = ((await req.json()) as { question?: unknown }).question;
+    ({ question, history } = (await req.json()) as { question?: unknown; history?: unknown });
   } catch {
     return NextResponse.json({ error: 'invalid body' }, { status: 400 });
   }
@@ -22,17 +23,18 @@ export async function POST(req: Request): Promise<Response> {
   const salt = ipHashSalt();
   if (salt === null) return fallback();
   try {
-    const ask: typeof askGemini =
-      process.env.GEMINI_API_KEY && process.env.GEMINI_MODEL
-        ? askGemini
-        : async () => {
-            throw new Error('Gemini is not configured');
-          };
+    const configured = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_MODEL);
+    const notConfigured = async (): Promise<never> => {
+      throw new Error('Gemini is not configured');
+    };
+    const ask: typeof askGemini = configured ? askGemini : notConfigured;
+    const fit: typeof askFit = configured ? askFit : notConfigured;
     const { status, body } = await handleAgentRequest(
-      { question, ip },
+      { question, ip, history },
       {
         store: getAgentStore(),
         ask,
+        fit,
         content: await getContent(),
         env: {
           cap: Number(process.env.AGENT_VISITOR_CAP) || 5,

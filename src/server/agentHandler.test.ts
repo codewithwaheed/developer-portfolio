@@ -41,7 +41,7 @@ describe('handleAgentRequest', () => {
     expect((await handle({ question: '' })).status).toBe(400);
     expect((await handle({ question: '   ' })).status).toBe(400);
     expect((await handle({ question: 42 })).status).toBe(400);
-    expect((await handle({ question: 'x'.repeat(501) })).status).toBe(400);
+    expect((await handle({ question: 'x'.repeat(8001) })).status).toBe(400);
   });
 
   it('answers, caches and logs', async () => {

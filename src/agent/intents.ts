@@ -103,14 +103,41 @@ function titleWords(title: string): string[] {
     .filter((w) => w.length >= 4 && !TITLE_STOP.has(w));
 }
 
+const plain = (html: string) =>
+  html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&[a-z#0-9]+;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/** "A, B and C" */
+const list = (xs: string[]) =>
+  xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`;
+
 function buildIntents(c: PortfolioContent): Intent[] {
   const companies = c.jobs.map((j) => j.company);
+  const current = c.jobs[0];
+  const firstSentences = plain(c.about.html)
+    .split(/(?<=[.!?])\s+/)
+    .slice(0, 2)
+    .join(' ');
+  const tagged = (tag: ProjectTag) =>
+    c.projects
+      .filter((p) => p.tags.includes(tag))
+      .map((p) => `- **${shortTitle(p)}**${p.company ? ` (${p.company})` : ''}`);
+  const tagReply = (tag: ProjectTag, intro: string) => {
+    const items = tagged(tag);
+    return items.length
+      ? `${intro}\n${items.slice(0, 6).join('\n')}\nOpen any of them for the details.`
+      : intro;
+  };
+  const topSkills = list(c.about.skills.slice(0, 10));
   const intents: Intent[] = [
     simple(
       'who',
-      ['whoareyou', 'whois', 'yourself', 'waheed', 'intro', 'introduce', 'bio'],
+      ['whoareyou', 'whoiswaheed', 'whois', 'yourself', 'intro', 'introduce', 'bio'],
       'me',
-      "Here's a quick intro to Waheed.",
+      `Meet Waheed. ${firstSentences}${current ? ` He's currently ${current.title} at ${current.company}.` : ''} His full intro is open on the desktop.`,
     ),
     {
       id: 'experience',
@@ -127,59 +154,69 @@ function buildIntents(c: PortfolioContent): Intent[] {
       weight: 1,
       plan: [
         open('experience'),
-        say(`That's Waheed's work history${companies.length ? `: ${companies.join(', ')}` : ''}.`),
+        say(
+          `Waheed has worked at ${list(companies)}:\n${c.jobs.map((j) => `- **${j.title}**, ${j.company} (${j.range})`).join('\n')}\nClick a role in experience.app to see what he shipped there.`,
+        ),
       ],
     },
     category(
       'ai',
       ['artificial', 'intelligence', 'llm', 'genai', 'gemini', 'machine'],
-      "Here's Waheed's AI work.",
+      tagReply('ai', "Here's Waheed's AI work — he builds LLM-powered tools, not just demos:"),
     ),
     category(
       'blockchain',
       ['crypto', 'web3', 'nft', 'ethereum', 'smart'],
-      "Here are Waheed's blockchain projects.",
+      tagReply('blockchain', 'Waheed has shipped real web3 products:'),
     ),
     category(
       'fintech',
       ['finance', 'financial', 'banking', 'payments', 'trading'],
-      "Here are Waheed's fintech projects.",
+      tagReply('fintech', "Fintech is a big part of Waheed's track record:"),
     ),
     category(
       'web',
       ['website', 'websites', 'frontend', 'fullstack'],
-      "Here are Waheed's web projects.",
+      tagReply('web', 'Pretty much everything Waheed builds runs on the web. Highlights:'),
     ),
     simple(
       'hire',
       ['hire', 'hiring', 'recruit', 'recruiter', 'freelance', 'available', 'availability'],
       'consult',
-      "Here's how to start a conversation about working with Waheed.",
+      "Great call. Waheed is open to consulting and new roles — grab a free slot on the calendar I just opened. Tip: paste a job description here and I'll tell you how well he fits it.",
     ),
     simple(
       'contact',
       ['contact', 'email', 'reach', 'message', 'touch', 'talk'],
       'messages',
-      "Here's where you can send Waheed a message.",
+      "You can reach Waheed by email or on his socials — they're all in the messages window I just opened. If it's about a project, booking a call is the fastest route.",
     ),
-    simple('resume', ['resume', 'cv', 'curriculum', 'vitae'], 'resume', "Here's Waheed's resume."),
+    simple(
+      'resume',
+      ['resume', 'cv', 'curriculum', 'vitae'],
+      'resume',
+      "Here's Waheed's resume — read it right here or download the PDF.",
+    ),
     simple(
       'blog',
       ['blog', 'posts', 'post', 'writing', 'articles', 'article', 'pensieve', 'wrote'],
       'pensieve',
-      "Here's what Waheed has written.",
+      `Waheed writes about the things he runs into while building — ${c.posts.length} posts so far. Pick one in pensieve.`,
     ),
     simple(
       'skills',
       ['skills', 'skill', 'stack', 'technologies', 'languages'],
       'settings',
-      "Here are the skills listed on Waheed's profile.",
+      `Waheed's core stack: ${topSkills}. The full list is open under Models and tools.`,
     ),
     {
       id: 'tour',
       keywords: ['tour', 'walkthrough', 'drive', 'demo'],
       weight: 1,
-      plan: [say('Sit back and watch me drive.'), { type: 'start_tour' }],
+      plan: [
+        say("Sit back — I'll drive you through the highlights in about a minute."),
+        { type: 'start_tour' },
+      ],
     },
     {
       id: 'projects',
@@ -188,24 +225,28 @@ function buildIntents(c: PortfolioContent): Intent[] {
       plan: [
         open('projects'),
         { type: 'filter_projects' },
-        say("Here are all of Waheed's projects."),
+        say(
+          `Here's everything Waheed has built — ${c.projects.length} projects, featured ones first. Filter by AI, blockchain, fintech or web.`,
+        ),
       ],
     },
     {
       id: 'featured',
-      keywords: ['featured', 'highlights', 'favorite', 'favourite'],
+      keywords: ['featured', 'highlights'],
       weight: 1,
       plan: [
         open('projects'),
         { type: 'filter_projects' },
-        say('The featured projects sit at the top of the folder.'),
+        say(
+          `Waheed's featured builds: ${list(c.projects.filter((p) => p.featured).map(shortTitle))}. They're at the top of the folder.`,
+        ),
       ],
     },
     simple(
       'consult',
       ['consult', 'consulting', 'consultation', 'booking', 'advice', 'schedule'],
       'consult',
-      "Here's how to book a consult with Waheed.",
+      'Waheed offers a free consultation call — pick a slot on the calendar I just opened.',
     ),
     simple(
       'terminal',
@@ -229,19 +270,19 @@ function buildIntents(c: PortfolioContent): Intent[] {
       'hello',
       ['hello', 'hey', 'hi', 'hiya', 'howdy', 'greetings', 'yo'],
       null,
-      "Hi! Ask me about Waheed's work, or press Let the agent drive.",
+      "Hey! 👋 I'm the agent running Waheed's portfolio. Ask me anything about his work, paste a job description to check his fit, or hit Let the agent drive for a tour.",
     ),
     simple(
       'help',
       ['help', 'capabilities', 'abilities'],
       null,
-      "Ask about Waheed's experience, projects, writing or how to hire him, or press Let the agent drive.",
+      "I can answer questions about Waheed's experience, skills and projects, open things on the desktop, check his fit against a job description you paste, or give you a guided tour.",
     ),
     simple(
       'thanks',
       ['thanks', 'thankyou', 'thx', 'cheers', 'appreciate'],
       null,
-      "You're welcome!",
+      "Anytime! Anything else you'd like to know about Waheed?",
     ),
   ];
 
@@ -250,7 +291,13 @@ function buildIntents(c: PortfolioContent): Intent[] {
       id: `project-${p.id}`,
       keywords: PROJECT_KEYWORDS[p.id] ?? [norm(p.id)],
       weight: 3,
-      plan: [open('projects'), { type: 'open_project', id: p.id }, say(`Here's ${shortTitle(p)}.`)],
+      plan: [
+        open('projects'),
+        { type: 'open_project', id: p.id },
+        say(
+          `Here's **${shortTitle(p)}**${p.company ? `, built at ${p.company}` : ''}${p.tech.length ? ` with ${list(p.tech.slice(0, 4))}` : ''}.`,
+        ),
+      ],
     });
   }
 
@@ -283,7 +330,7 @@ function buildIntents(c: PortfolioContent): Intent[] {
       plan: [
         open('pensieve'),
         { type: 'open_post', slug: post.slug },
-        say(`Here's the post "${post.title}".`),
+        say(`Here's Waheed's post **${post.title}**.`),
       ],
     });
   }

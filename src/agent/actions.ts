@@ -75,3 +75,57 @@ export function sanitizeActions(raw: unknown, known: KnownContent): AgentAction[
     return s ? [s] : [];
   });
 }
+
+/** How well Waheed fits a pasted job description (produced by the model, validated here). */
+export interface FitReport {
+  verdict: 'strong' | 'good' | 'partial';
+  summary: string;
+  matches: { requirement: string; evidence: string }[];
+  gaps: { requirement: string; note: string }[];
+  projectIds: string[];
+}
+
+const str = (v: unknown, max: number): string | null =>
+  typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null;
+
+/** Keep only well-formed fields; unknown project ids are dropped. Null when unusable. */
+export function sanitizeFit(raw: unknown, projectIds: string[]): FitReport | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const verdict = r.verdict === 'strong' || r.verdict === 'good' ? r.verdict : 'partial';
+  const summary = str(r.summary, 800);
+  if (!summary) return null;
+  const pairs = <K extends string>(v: unknown, a: 'requirement', b: K, n: number) =>
+    (Array.isArray(v) ? v : [])
+      .map((x) => {
+        const o = (x ?? {}) as Record<string, unknown>;
+        const req = str(o[a], 200);
+        const other = str(o[b], 300);
+        return req && other
+          ? ({ requirement: req, [b]: other } as { requirement: string } & Record<K, string>)
+          : null;
+      })
+      .filter((x): x is { requirement: string } & Record<K, string> => x !== null)
+      .slice(0, n);
+  return {
+    verdict,
+    summary,
+    matches: pairs(r.matches, 'requirement', 'evidence', 8),
+    gaps: pairs(r.gaps, 'requirement', 'note', 4),
+    projectIds: (Array.isArray(r.projectIds) ? r.projectIds : [])
+      .filter((id): id is string => typeof id === 'string' && projectIds.includes(id))
+      .slice(0, 3),
+  };
+}
+
+/** Pasted job descriptions are long and full of hiring vocabulary. */
+export function looksLikeJobDescription(text: string): boolean {
+  if (text.length >= 600) return true;
+  if (text.length < 200) return false;
+  return /responsibilit|requirement|qualification|we are looking|you will|what you'll|must have|nice to have|years of experience|job description|\bJD\b/i.test(
+    text,
+  );
+}
+
+/** Longest question the agent accepts (room for a pasted job description). */
+export const QUESTION_MAX = 8000;

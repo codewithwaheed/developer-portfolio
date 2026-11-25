@@ -12,7 +12,7 @@ describe('AgentBar', () => {
   it('focuses on Cmd+K and submits trimmed text on Enter', () => {
     const onSubmit = vi.fn();
     render(<AgentBar onSubmit={onSubmit} onTour={() => {}} />);
-    const input = screen.getByPlaceholderText('Ask AgentOS anything…');
+    const input = screen.getByRole('textbox', { name: 'Ask AgentOS' });
     expect(input).not.toHaveFocus();
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
     expect(input).toHaveFocus();
@@ -51,22 +51,25 @@ describe('AgentBar', () => {
     );
   });
 
-  it.each(['bar', 'sheet'] as const)('renders the reply text once (%s)', async (variant) => {
+  it.each(['bar', 'sheet'] as const)('shows the reply once in the chat (%s)', async (variant) => {
     const { container } = render(
       <AgentBar variant={variant} onSubmit={() => {}} onTour={() => {}} />,
     );
     const reply = "Here's Waheed's AI work.";
-    act(() => useAgent.getState().setReply(reply));
-    const bar = container.querySelector('[data-agent-bar]')!;
-    const count = () => bar.textContent!.split(reply).length - 1;
-    await screen.findByRole('status');
-    // While streaming, the text is one revealed prefix plus one invisible tail.
-    expect(bar.textContent!.split("Here's").length - 1).toBe(1);
-    expect(count()).toBe(1);
-    await vi.waitFor(
-      () => expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'false'),
-      { timeout: 2500 },
-    );
-    expect(count()).toBe(1);
+    act(() => {
+      useAgent.getState().pushUser('show me your ai work');
+      useAgent.getState().setReply(reply);
+    });
+    const visibleText = () => {
+      const clone = container.querySelector('[data-agent-bar]')!.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll('.sr-only').forEach((n) => n.remove());
+      return clone.textContent!;
+    };
+    await vi.waitFor(() => expect(visibleText().split(reply).length - 1).toBe(1), {
+      timeout: 3000,
+    });
+    // Screen readers get the reply once through the polite live region.
+    expect(screen.getByRole('status')).toHaveTextContent(reply);
+    expect(visibleText()).toContain('show me your ai work');
   });
 });

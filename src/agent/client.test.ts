@@ -209,7 +209,7 @@ describe('ask', () => {
       '/api/agent',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ question: 'rust vs go?' }),
+        body: JSON.stringify({ question: 'rust vs go?', history: [] }),
       }),
     );
     expect(sendBeacon).not.toHaveBeenCalled();
@@ -279,5 +279,61 @@ describe('ask', () => {
     await ask('rust vs go?');
     expect(useAgent.getState().reply).toBe('');
     expect(useAgent.getState().fallback).toBe(false);
+  });
+});
+
+describe('ask: conversation', () => {
+  it('keeps the conversation and sends earlier turns as history', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        json({ source: 'gemini', text: 'Not in my memory banks yet!', actions: [] }),
+      )
+      .mockResolvedValueOnce(json({ source: 'gemini', text: 'He loves React.', actions: [] }));
+    await ask("what's waheed's favourite food?");
+    await ask('and what about his frontend skills these days?');
+    const body = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(body.history).toEqual([
+      { role: 'user', text: "what's waheed's favourite food?" },
+      { role: 'agent', text: 'Not in my memory banks yet!' },
+    ]);
+    expect(useAgent.getState().messages.map((m) => m.role)).toEqual([
+      'user',
+      'agent',
+      'user',
+      'agent',
+    ]);
+  });
+
+  it('sends long questions to the model even when an intent matches', async () => {
+    fetchMock.mockResolvedValueOnce(
+      json({ source: 'gemini', text: 'Yes, lots of AI.', actions: [] }),
+    );
+    await ask('does he have hands-on experience shipping AI features to production users?');
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(useAgent.getState().reply).toBe('Yes, lots of AI.');
+  });
+
+  it('answers from the scripted plan when the model is unavailable', async () => {
+    fetchMock.mockResolvedValueOnce(
+      json({ source: 'fallback', reason: 'quota', text: FALLBACK_TEXT }),
+    );
+    await ask('could you please show me all of his AI work in detail');
+    expect(useOS.getState().windows.map((w) => w.id)).toContain('projects');
+    expect(useAgent.getState().reply).not.toBe(FALLBACK_TEXT);
+    expect(sendBeacon).toHaveBeenCalled();
+  });
+
+  it('attaches a validated fit report to the reply', async () => {
+    fetchMock.mockResolvedValueOnce(
+      json({
+        source: 'gemini',
+        text: 'Strong fit.',
+        actions: [],
+        fit: { verdict: 'strong', summary: 'Strong fit.', matches: [], gaps: [], projectIds: [] },
+      }),
+    );
+    await ask('x '.repeat(400));
+    const last = useAgent.getState().messages.at(-1)!;
+    expect(last.fit?.verdict).toBe('strong');
   });
 });
