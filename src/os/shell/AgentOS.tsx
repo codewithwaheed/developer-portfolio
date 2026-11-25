@@ -22,7 +22,7 @@ import { Dock } from './Dock';
 import { Boot } from './Boot';
 import { Lock } from './Lock';
 import { initialPhase, type Phase } from './bootFlow';
-import { parseDeepLink } from './deepLink';
+import { parseDeepLink, type DeepLink } from './deepLink';
 import { safeStorage } from '@/lib/safeStorage';
 import { play, unlockAudio } from '@/sound/sound';
 import { useAgent } from '@/agent/agentStore';
@@ -69,14 +69,21 @@ function prefersReducedMotion(): boolean {
   );
 }
 
-export function AgentOS({ content }: { content: PortfolioContent }) {
+export function AgentOS({
+  content,
+  initialDeepLink,
+}: {
+  content: PortfolioContent;
+  /** A deep link from the route itself (e.g. /pensieve/<slug>); wins over the query string. */
+  initialDeepLink?: DeepLink;
+}) {
   const windows = useOS((s) => s.windows);
   const agentStatus = useAgent((s) => s.status);
   const fallback = useAgent((s) => s.fallback);
   const isMobile = useIsMobile();
   // Defaults until mounted: memory lives in localStorage, which SSR cannot read.
   const [memoryChips, setMemoryChips] = useState(DEFAULT_CHIPS);
-  // null until mounted: nothing is layered over the desktop during SSR/hydration.
+  // null until mounted: an opaque cover hides the desktop during SSR/hydration.
   const [phase, setPhase] = useState<Phase | null>(null);
 
   // Memory: remember every app that opens, and keep the suggestion chips in step with it.
@@ -102,10 +109,14 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
     sync();
     window.addEventListener('resize', sync);
 
-    const link = parseDeepLink(
-      window.location.search,
-      content.posts.map((p) => p.slug),
-    );
+    const slugs = content.posts.map((p) => p.slug);
+    const routeLink: DeepLink =
+      initialDeepLink?.post && slugs.includes(initialDeepLink.post)
+        ? { app: 'pensieve', post: initialDeepLink.post }
+        : initialDeepLink?.app
+          ? { app: initialDeepLink.app }
+          : {};
+    const link = routeLink.app ? routeLink : parseDeepLink(window.location.search, slugs);
     const deepLink = link.app !== undefined;
     if (link.app) openApp(link.app);
     if (link.post) useOS.getState().openPost(link.post);
@@ -138,6 +149,8 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
       window.removeEventListener('pointerdown', unlock);
       window.removeEventListener('keydown', unlock);
     };
+    // The route's deep link only matters on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content.posts]);
 
   const onBootDone = useCallback(() => setPhase('lock'), []);
@@ -151,35 +164,48 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
   const onTour = useCallback(() => void runAgentPlan(TOUR), []);
   const renderMobileApp = useCallback((id: AppId) => renderApp(id, content), [content]);
   const menuStatus = agentStatus === 'idle' ? 'idle' : 'thinking';
+  // Boot and lock are modal: nothing behind them is focusable or clickable.
+  const covered = phase !== 'desktop';
 
   return (
     // reducedMotion="user": every Motion animation in the shell honours the OS setting.
     <MotionConfig reducedMotion="user">
       <div className="agentos-root fixed inset-0 overflow-hidden">
         <Wallpaper thinking={agentStatus === 'thinking'} />
-        {isMobile ? (
-          <MobileShell agentStatus={menuStatus} renderApp={renderMobileApp} />
-        ) : (
-          <>
-            <DesktopIcons />
-            <AnimatePresence>
-              {windows.map((w) => (
-                <Window key={w.id} id={w.id}>
-                  {renderApp(w.id, content)}
-                </Window>
-              ))}
-            </AnimatePresence>
-            <MenuBar agentStatus={menuStatus} onRestart={onRestart} />
-            <Dock />
-          </>
-        )}
-        <AgentBar
-          variant={isMobile ? 'sheet' : 'bar'}
-          onSubmit={onAsk}
-          onTour={onTour}
-          suggestions={fallback ? FALLBACK_SUGGESTIONS : memoryChips}
-        />
+        <div className="contents" data-shell inert={covered}>
+          {isMobile ? (
+            <MobileShell agentStatus={menuStatus} renderApp={renderMobileApp} />
+          ) : (
+            <>
+              <DesktopIcons />
+              <AnimatePresence>
+                {windows.map((w) => (
+                  <Window key={w.id} id={w.id}>
+                    {renderApp(w.id, content)}
+                  </Window>
+                ))}
+              </AnimatePresence>
+              <MenuBar agentStatus={menuStatus} onRestart={onRestart} />
+              <Dock />
+            </>
+          )}
+          <AgentBar
+            variant={isMobile ? 'sheet' : 'bar'}
+            onSubmit={onAsk}
+            onTour={onTour}
+            suggestions={fallback ? FALLBACK_SUGGESTIONS : memoryChips}
+            shortcutEnabled={!covered}
+          />
+        </div>
         <GhostCursor mode={isMobile ? 'pulse' : 'pointer'} />
+        {phase === null && (
+          // Same backdrop as boot/lock, so the first paint never shows a bare desktop.
+          <div
+            data-boot-cover
+            aria-hidden
+            className="fixed inset-0 z-[2000] bg-[var(--wall-base)]"
+          />
+        )}
         {phase === 'boot' && <Boot onDone={onBootDone} />}
         {phase === 'lock' && <Lock onWake={onWake} />}
       </div>

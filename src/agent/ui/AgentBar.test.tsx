@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { AgentBar } from './AgentBar';
-import { resetAgent } from '../agentStore';
+import { resetAgent, useAgent } from '../agentStore';
 
 afterEach(() => {
   cleanup();
@@ -49,5 +49,24 @@ describe('AgentBar', () => {
       'aria-expanded',
       'false',
     );
+  });
+
+  it.each(['bar', 'sheet'] as const)('renders the reply text once (%s)', async (variant) => {
+    const { container } = render(
+      <AgentBar variant={variant} onSubmit={() => {}} onTour={() => {}} />,
+    );
+    const reply = "Here's Waheed's AI work.";
+    act(() => useAgent.getState().setReply(reply));
+    const bar = container.querySelector('[data-agent-bar]')!;
+    const count = () => bar.textContent!.split(reply).length - 1;
+    await screen.findByRole('status');
+    // While streaming, the text is one revealed prefix plus one invisible tail.
+    expect(bar.textContent!.split("Here's").length - 1).toBe(1);
+    expect(count()).toBe(1);
+    await vi.waitFor(
+      () => expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'false'),
+      { timeout: 2500 },
+    );
+    expect(count()).toBe(1);
   });
 });

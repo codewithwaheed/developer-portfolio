@@ -25,6 +25,7 @@ export function Lock({ onWake }: { onWake: () => void }) {
     <div
       ref={ref}
       role="dialog"
+      aria-modal="true"
       aria-label="Lock screen"
       tabIndex={-1}
       onClick={onWake}

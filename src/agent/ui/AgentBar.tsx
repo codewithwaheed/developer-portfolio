@@ -25,6 +25,8 @@ interface Props {
   suggestions?: string[];
   /** 'bar' floats above the dock; 'sheet' is the phone's swipe-up bottom sheet. */
   variant?: 'bar' | 'sheet';
+  /** False while boot/lock covers the shell: ⌘K / Ctrl+K is ignored. */
+  shortcutEnabled?: boolean;
 }
 
 /** Reveal `text` character by character over ~1.2s (instantly under reduced motion). */
@@ -55,6 +57,7 @@ export function AgentBar({
   onTour,
   suggestions = DEFAULT_SUGGESTIONS,
   variant = 'bar',
+  shortcutEnabled = true,
 }: Props) {
   const status = useAgent((s) => s.status);
   const reply = useAgent((s) => s.reply);
@@ -70,8 +73,9 @@ export function AgentBar({
     if (reply) setExpanded(true);
   }, [reply]);
 
-  // ⌘K / Ctrl+K from anywhere.
+  // ⌘K / Ctrl+K from anywhere (but not from behind the boot/lock screen).
   useEffect(() => {
+    if (!shortcutEnabled) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -80,7 +84,7 @@ export function AgentBar({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [shortcutEnabled]);
 
   // Any visitor input outside the bar interrupts a running plan.
   useEffect(() => {
@@ -118,15 +122,23 @@ export function AgentBar({
           key="reply"
           role="status"
           aria-live="polite"
+          aria-atomic="true"
+          // Announce once, when the streamed text is complete.
+          aria-busy={streamed !== reply}
           initial={{ opacity: 0, y: 8, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 6, transition: { duration: 0.15 } }}
           transition={SPRING}
           className="glass glass-strong pointer-events-auto relative w-full max-w-[560px] rounded-2xl py-3 pr-9 pl-4 text-[13.5px] leading-relaxed"
         >
-          <span className="sr-only">{reply}</span>
-          <p aria-hidden className="whitespace-pre-wrap">
+          {/* One copy of the text: the unrevealed tail is laid out but invisible. */}
+          <p className="whitespace-pre-wrap">
             {streamed}
+            {streamed.length < reply.length && (
+              <span aria-hidden className="invisible">
+                {reply.slice(streamed.length)}
+              </span>
+            )}
           </p>
           <button
             type="button"
