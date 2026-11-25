@@ -78,6 +78,22 @@ describe('matchIntent', () => {
     expect(matchIntent('', c)).toBeNull();
   });
 
+  it('does not capture unrelated questions through fuzzy or generic words', () => {
+    expect(matchIntent('How can I reach you?', c)?.id).toBe('contact');
+    expect(matchIntent('what do you think about rust?', c)).toBeNull();
+    expect(matchIntent('who won the world cup?', c)).toBeNull();
+    expect(matchIntent('what do you know about quantum computing?', c)).toBeNull();
+    expect(matchIntent('give me a word for happy', c)).toBeNull();
+    expect(matchIntent('Is there a dark mode?', c)?.id).not.toBe('experience');
+  });
+
+  it('opens a post only on several distinctive title words, never a generic one', () => {
+    for (const w of ['with', 'from', 'that', 'using', 'dark', 'error', 'docker']) {
+      expect(matchIntent(w, c)?.id ?? '').not.toMatch(/^post-/);
+    }
+    expect(matchIntent('the docker compose post', c)?.id).toBe('post-docker-compose-error');
+  });
+
   it('prefers the more specific intent on a tie', () => {
     expect(matchIntent('your AI work', c)?.id).toBe('ai');
   });

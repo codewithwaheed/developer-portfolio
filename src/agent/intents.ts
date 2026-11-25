@@ -26,6 +26,8 @@ interface Intent {
   keywords: string[];
   /** Tie-break: 3 project, company and post, 2 category, 1 general. */
   weight: 1 | 2 | 3;
+  /** Distinct keywords needed to match (default 1); weak, generic intents ask for more. */
+  minScore?: number;
   plan: AgentAction[];
 }
 
@@ -77,12 +79,36 @@ function shortTitle(p: Project): string {
     .trim();
 }
 
+const TITLE_STOP = new Set([
+  'with',
+  'from',
+  'that',
+  'this',
+  'using',
+  'your',
+  'have',
+  'what',
+  'when',
+  'into',
+  'about',
+  'file',
+  'test',
+]);
+
+/** Distinctive words of a title: 4+ letters, no common filler. */
+function titleWords(title: string): string[] {
+  return title
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 4 && !TITLE_STOP.has(w));
+}
+
 function buildIntents(c: PortfolioContent): Intent[] {
   const companies = c.jobs.map((j) => j.company);
   const intents: Intent[] = [
     simple(
       'who',
-      ['who', 'yourself', 'waheed', 'intro', 'introduce', 'bio'],
+      ['whoareyou', 'whois', 'yourself', 'waheed', 'intro', 'introduce', 'bio'],
       'me',
       "Here's a quick intro to Waheed.",
     ),
@@ -91,13 +117,10 @@ function buildIntents(c: PortfolioContent): Intent[] {
       keywords: [
         'experience',
         'worked',
-        'where',
         'employer',
         'employers',
         'career',
         'jobs',
-        'job',
-        'company',
         'companies',
         'history',
       ],
@@ -124,21 +147,12 @@ function buildIntents(c: PortfolioContent): Intent[] {
     ),
     category(
       'web',
-      ['website', 'websites', 'frontend', 'fullstack', 'react'],
+      ['website', 'websites', 'frontend', 'fullstack'],
       "Here are Waheed's web projects.",
     ),
     simple(
       'hire',
-      [
-        'hire',
-        'hiring',
-        'recruit',
-        'recruiter',
-        'freelance',
-        'available',
-        'availability',
-        'engage',
-      ],
+      ['hire', 'hiring', 'recruit', 'recruiter', 'freelance', 'available', 'availability'],
       'consult',
       "Here's how to start a conversation about working with Waheed.",
     ),
@@ -157,19 +171,19 @@ function buildIntents(c: PortfolioContent): Intent[] {
     ),
     simple(
       'skills',
-      ['skills', 'skill', 'stack', 'technologies', 'tech', 'tools', 'languages', 'know'],
+      ['skills', 'skill', 'stack', 'technologies', 'languages'],
       'settings',
       "Here are the skills listed on Waheed's profile.",
     ),
     {
       id: 'tour',
-      keywords: ['tour', 'walkthrough', 'drive', 'demo', 'showcase', 'surprise'],
+      keywords: ['tour', 'walkthrough', 'drive', 'demo'],
       weight: 1,
       plan: [say('Sit back and watch me drive.'), { type: 'start_tour' }],
     },
     {
       id: 'projects',
-      keywords: ['projects', 'project', 'portfolio', 'work', 'built', 'build', 'apps', 'folder'],
+      keywords: ['projects', 'project', 'portfolio', 'work'],
       weight: 1,
       plan: [
         open('projects'),
@@ -179,7 +193,7 @@ function buildIntents(c: PortfolioContent): Intent[] {
     },
     {
       id: 'featured',
-      keywords: ['featured', 'best', 'highlights', 'favorite', 'favourite', 'proud'],
+      keywords: ['featured', 'highlights', 'favorite', 'favourite'],
       weight: 1,
       plan: [
         open('projects'),
@@ -189,23 +203,13 @@ function buildIntents(c: PortfolioContent): Intent[] {
     },
     simple(
       'consult',
-      [
-        'consult',
-        'consulting',
-        'consultation',
-        'book',
-        'booking',
-        'advice',
-        'call',
-        'meeting',
-        'schedule',
-      ],
+      ['consult', 'consulting', 'consultation', 'booking', 'advice', 'schedule'],
       'consult',
       "Here's how to book a consult with Waheed.",
     ),
     simple(
       'terminal',
-      ['terminal', 'shell', 'console', 'command', 'cli'],
+      ['terminal', 'shell', 'console', 'cli'],
       'terminal',
       "Here's the terminal, a text way to explore the portfolio.",
     ),
@@ -217,7 +221,7 @@ function buildIntents(c: PortfolioContent): Intent[] {
     ),
     simple(
       'agentlog',
-      ['agentlog', 'log', 'logs', 'activity'],
+      ['agentlog', 'logs', 'activity'],
       'agentlog',
       'This is agent.log, a record of the steps I take.',
     ),
@@ -229,11 +233,16 @@ function buildIntents(c: PortfolioContent): Intent[] {
     ),
     simple(
       'help',
-      ['help', 'capabilities', 'abilities', 'commands', 'options', 'guide', 'tips'],
+      ['help', 'capabilities', 'abilities'],
       null,
       "Ask about Waheed's experience, projects, writing or how to hire him, or press Let the agent drive.",
     ),
-    simple('thanks', ['thanks', 'thank', 'thx', 'cheers', 'appreciate'], null, "You're welcome!"),
+    simple(
+      'thanks',
+      ['thanks', 'thankyou', 'thx', 'cheers', 'appreciate'],
+      null,
+      "You're welcome!",
+    ),
   ];
 
   for (const p of c.projects.filter((x) => x.featured)) {
@@ -262,14 +271,15 @@ function buildIntents(c: PortfolioContent): Intent[] {
     });
   }
 
-  const POST_STOP = new Set(['error', 'publish']);
   for (const post of c.posts) {
-    const keywords = post.slug.split('-').filter((t) => t.length >= 4 && !POST_STOP.has(t));
-    if (!keywords.length) continue;
+    const keywords = [...new Set(titleWords(post.title))];
+    if (keywords.length < 2) continue;
     intents.push({
       id: `post-${post.slug}`,
       keywords,
       weight: 3,
+      // A single title word is too common to open a post.
+      minScore: 2,
       plan: [
         open('pensieve'),
         { type: 'open_post', slug: post.slug },
@@ -289,7 +299,7 @@ export function intentPlan(id: string, content: PortfolioContent): AgentAction[]
   return buildIntents(content).find((i) => i.id === id)?.plan ?? null;
 }
 
-/** Lowercase words plus adjacent pairs joined, so "vaffa cosmo" can match "vaffacosmo". */
+/** Lowercase words plus adjacent pairs and triples joined, so "vaffa cosmo" can match "vaffacosmo". */
 function tokenize(question: string): string[] {
   const words = question
     .toLowerCase()
@@ -297,16 +307,17 @@ function tokenize(question: string): string[] {
     .split(/\s+/)
     .filter(Boolean);
   const pairs = words.slice(1).map((w, i) => words[i] + w);
-  return [...words, ...pairs];
+  const triples = words.slice(2).map((w, i) => words[i] + words[i + 1] + w);
+  return [...words, ...pairs, ...triples];
 }
 
-/** One edit of slack for words of 4+ letters; 4-letter words must share a first letter ("tour" is not "your"). */
+/**
+ * Exact, or one edit of slack when the keyword has 6+ letters and the token 5+.
+ * Shorter words are exact only: "reach" is not "react", "there" is not "where".
+ */
 const hits = (keyword: string, token: string) =>
   keyword === token ||
-  (keyword.length >= 4 &&
-    token.length >= 4 &&
-    (keyword.length > 4 || token.length > 4 || keyword[0] === token[0]) &&
-    damerauLevenshtein(keyword, token) <= 1);
+  (keyword.length >= 6 && token.length >= 5 && damerauLevenshtein(keyword, token) <= 1);
 
 /** Resolve a question to a scripted plan without any network call, or null. */
 export function matchIntent(
@@ -318,7 +329,7 @@ export function matchIntent(
   let best: { intent: Intent; score: number } | null = null;
   for (const intent of buildIntents(content)) {
     const score = intent.keywords.filter((k) => tokens.some((t) => hits(k, t))).length;
-    if (score < 1) continue;
+    if (score < (intent.minScore ?? 1)) continue;
     if (
       !best ||
       score > best.score ||

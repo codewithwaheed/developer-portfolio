@@ -53,6 +53,39 @@ afterEach(() => {
   resetOS();
 });
 
+describe('ask: tour', () => {
+  const stubMotion = (reduce: boolean) =>
+    vi.stubGlobal('matchMedia', (q: string) => ({
+      matches: reduce && q.includes('reduce'),
+      media: q,
+      addEventListener() {},
+      removeEventListener() {},
+    }));
+
+  it('hands over to TOUR, runs every stop and settles idle', async () => {
+    stubMotion(true);
+    await ask('give me a tour');
+    await vi.waitFor(() => expect(useOS.getState().windows.map((w) => w.id)).toContain('consult'), {
+      timeout: 2000,
+    });
+    await vi.waitFor(() => expect(useAgent.getState().status).toBe('idle'));
+    expect(useOS.getState().windows.map((w) => w.id)).toEqual(
+      expect.arrayContaining(['me', 'experience', 'projects', 'consult']),
+    );
+    expect(useAgent.getState().reply).toMatch(/tour/);
+  });
+
+  it('an interrupt mid-tour wins', async () => {
+    stubMotion(false);
+    await ask('give me a tour');
+    await vi.waitFor(() => expect(useOS.getState().windows.map((w) => w.id)).toContain('me'));
+    useAgent.getState().abort();
+    await new Promise((r) => setTimeout(r, 900));
+    expect(useOS.getState().windows.map((w) => w.id)).not.toContain('consult');
+    expect(useAgent.getState().status).toBe('idle');
+  });
+});
+
 describe('ask', () => {
   it('ignores blank input', async () => {
     await ask('   ');
