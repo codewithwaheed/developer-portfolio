@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { safeStorage } from '@/lib/safeStorage';
 
 const LINES = ['loading weights: waheed-1…', 'mounting projects/…', 'agent ready'];
@@ -9,6 +9,7 @@ const CHAR_MS = 3000 / TOTAL;
 
 export function Boot({ onDone }: { onDone: () => void }) {
   const [count, setCount] = useState(0);
+  const intervalRef = useRef(0);
 
   useEffect(() => {
     let done = false;
@@ -18,25 +19,27 @@ export function Boot({ onDone }: { onDone: () => void }) {
       safeStorage.set('agentos.booted', true);
       onDone();
     };
-    const id = window.setInterval(() => {
-      setCount((c) => {
-        if (c + 1 >= TOTAL) window.clearInterval(id);
-        return c + 1;
-      });
-    }, CHAR_MS);
+    const id = window.setInterval(() => setCount((c) => c + 1), CHAR_MS);
+    intervalRef.current = id;
     const end = window.setTimeout(finish, 3000 + 400);
-    window.addEventListener('keydown', finish);
-    window.addEventListener('pointerdown', finish);
-    window.addEventListener('click', finish);
+    // Attached a tick late so the click that started a Restart cannot skip it.
+    const arm = window.setTimeout(() => {
+      window.addEventListener('keydown', finish);
+      window.addEventListener('pointerdown', finish);
+    }, 0);
     return () => {
       done = true;
       window.clearInterval(id);
       window.clearTimeout(end);
+      window.clearTimeout(arm);
       window.removeEventListener('keydown', finish);
       window.removeEventListener('pointerdown', finish);
-      window.removeEventListener('click', finish);
     };
   }, [onDone]);
+
+  useEffect(() => {
+    if (count >= TOTAL) window.clearInterval(intervalRef.current);
+  }, [count]);
 
   let remaining = count;
   return (

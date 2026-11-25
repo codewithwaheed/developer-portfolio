@@ -22,3 +22,14 @@ describe('Lock', () => {
     expect(onWake).toHaveBeenCalledTimes(3);
   });
 });
+
+describe('Lock classic link', () => {
+  it('does not wake when clicked', () => {
+    const onWake = vi.fn();
+    render(<Lock onWake={onWake} />);
+    const link = screen.getByRole('link', { name: 'classic view' });
+    link.addEventListener('click', (e) => e.preventDefault());
+    fireEvent.click(link);
+    expect(onWake).not.toHaveBeenCalled();
+  });
+});

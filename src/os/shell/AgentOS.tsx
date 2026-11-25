@@ -51,6 +51,14 @@ function renderApp(id: AppId, content: PortfolioContent) {
   }
 }
 
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
 export function AgentOS({ content }: { content: PortfolioContent }) {
   const windows = useOS((s) => s.windows);
   // null until mounted: nothing is layered over the desktop during SSR/hydration.
@@ -64,11 +72,9 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
 
     const app = new URLSearchParams(window.location.search).get('app');
     const deepLink = isAppId(app);
-    if (isAppId(app)) openApp(app);
+    if (deepLink) openApp(app);
 
-    const reducedMotion =
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reducedMotion = prefersReducedMotion();
     setPhase(
       initialPhase({
         booted: safeStorage.get('agentos.booted', false),
@@ -85,7 +91,7 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
     setPhase('desktop');
     useOS.getState().openApp('me');
   }, []);
-  const onRestart = useCallback(() => setPhase('boot'), []);
+  const onRestart = useCallback(() => setPhase(prefersReducedMotion() ? 'lock' : 'boot'), []);
 
   return (
     // reducedMotion="user": every Motion animation in the shell honours the OS setting.
