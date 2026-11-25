@@ -3,7 +3,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getContent, getPost } from '@/content/load';
 import { baseOpenGraph } from '@/seo/metadata';
-import { PostRedirect } from '@/seo/PostRedirect';
+import { AgentOS } from '@/os/shell/AgentOS';
+import { HideWhenHydrated } from '@/seo/HideWhenHydrated';
 
 type Params = { slug: string };
 
@@ -29,26 +30,39 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   };
 }
 
+/**
+ * The real post URL: with JS the OS boots straight into Pensieve with this post open (the URL
+ * stays put); without JS, and for crawlers, the server-rendered article is the page.
+ */
 export default async function PostPage({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
-  const post = await getPost(slug);
+  const [content, post] = await Promise.all([getContent(), getPost(slug)]);
   if (!post) notFound();
   return (
-    <main className="mx-auto max-w-2xl px-5 py-10 text-[var(--fg)]">
-      <PostRedirect slug={post.slug} />
-      <p className="text-sm">
-        <Link href="/" className="text-[var(--accent)] underline underline-offset-2">
-          Open AgentOS
-        </Link>
-      </p>
-      <article className="mt-4">
-        <h1 className="text-3xl font-semibold">{post.title}</h1>
-        <p className="mt-1 text-sm text-[var(--fg-faint)]">{post.date}</p>
-        <div
-          className="pensieve-body mt-6 space-y-3 leading-relaxed text-[var(--fg-muted)] [&_a]:text-[var(--accent)]"
-          dangerouslySetInnerHTML={{ __html: post.html }}
-        />
-      </article>
-    </main>
+    <>
+      <noscript>
+        <style>
+          {'.agentos-root{display:none}html,body{overflow:auto!important;height:auto!important}'}
+        </style>
+      </noscript>
+      <AgentOS content={content} initialDeepLink={{ app: 'pensieve', post: post.slug }} />
+      <HideWhenHydrated>
+        <main className="mx-auto max-w-2xl px-5 py-10 text-[var(--fg)]">
+          <p className="text-sm">
+            <Link href="/" className="text-[var(--accent)] underline underline-offset-2">
+              Open AgentOS
+            </Link>
+          </p>
+          <article className="mt-4">
+            <h1 className="text-3xl font-semibold">{post.title}</h1>
+            <p className="mt-1 text-sm text-[var(--fg-faint)]">{post.date}</p>
+            <div
+              className="pensieve-body mt-6 space-y-3 leading-relaxed text-[var(--fg-muted)] [&_a]:text-[var(--accent)]"
+              dangerouslySetInnerHTML={{ __html: post.html }}
+            />
+          </article>
+        </main>
+      </HideWhenHydrated>
+    </>
   );
 }

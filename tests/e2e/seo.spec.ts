@@ -29,9 +29,19 @@ test.describe('without JavaScript', () => {
     await expect(page.getByRole('link', { name: /book/i }).first()).toBeVisible();
   });
 
-  test('blog post renders as an article', async ({ page }) => {
+  test('blog post renders as a readable, scrollable article', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 500 });
     await page.goto('/pensieve/dark-mode-toggle');
     await expect(page.getByRole('heading', { name: 'Dark Mode Toggle' }).first()).toBeVisible();
+    const display = await page.evaluate(
+      () => getComputedStyle(document.querySelector('.agentos-root')!).display,
+    );
+    expect(display).toBe('none');
+    expect(
+      await page.evaluate(() => document.scrollingElement!.scrollHeight > window.innerHeight),
+    ).toBe(true);
+    await page.evaluate(() => window.scrollTo(0, 99999));
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   });
 });
 
@@ -46,11 +56,17 @@ test('classic page scrolls', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 });
 
-test('post route hands off to the OS when JS runs', async ({ page }) => {
+test('post route opens the post inside the OS and keeps its URL', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/pensieve/dark-mode-toggle');
-  await page.waitForURL(/\?app=pensieve&post=dark-mode-toggle/);
-  await expect(page.getByRole('dialog').first()).toBeVisible();
+  const pensieve = page.locator('[role="dialog"]').filter({
+    has: page.getByRole('heading', { name: 'Dark Mode Toggle' }),
+  });
+  await expect(pensieve.first()).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Lock screen' })).toHaveCount(0);
+  await page.waitForTimeout(500);
+  expect(new URL(page.url()).pathname).toBe('/pensieve/dark-mode-toggle');
+  expect(new URL(page.url()).search).toBe('');
 });
 
 test('/pensieve/[slug] is not swallowed by the pensieve redirects', async ({ request }) => {
