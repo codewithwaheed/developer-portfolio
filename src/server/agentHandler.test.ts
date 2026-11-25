@@ -106,6 +106,38 @@ describe('handleAgentRequest', () => {
     });
   });
 
+  it('detects 429 inside a RetryError-shaped error and a bare APICallError', async () => {
+    const { handle, ask } = setup();
+    const api = Object.assign(new Error('Too many requests'), { statusCode: 429 });
+    ask.mockRejectedValueOnce(
+      Object.assign(new Error('Failed after 3 attempts. Last error: Too many requests'), {
+        name: 'AI_RetryError',
+        lastError: api,
+        errors: [api, api, api],
+      }),
+    );
+    expect((await handle({ question: 'r1', ip: 'a' })).body).toMatchObject({ reason: 'quota' });
+    ask.mockRejectedValueOnce(
+      Object.assign(new Error('Retry failed'), { name: 'AI_RetryError', errors: [api] }),
+    );
+    expect((await handle({ question: 'r2', ip: 'b' })).body).toMatchObject({ reason: 'quota' });
+    ask.mockRejectedValueOnce(api);
+    expect((await handle({ question: 'r3', ip: 'c' })).body).toMatchObject({ reason: 'quota' });
+  });
+
+  it('turns a timeout/abort into a 200 error fallback', async () => {
+    const { handle, ask } = setup();
+    ask.mockRejectedValueOnce(
+      Object.assign(new Error('The operation was aborted due to timeout'), {
+        name: 'TimeoutError',
+      }),
+    );
+    expect(await handle({ question: 'slow', ip: 't' })).toMatchObject({
+      status: 200,
+      body: { source: 'fallback', reason: 'error' },
+    });
+  });
+
   it('swallows logging failures', async () => {
     const { store, handle } = setup();
     store.logQuestion = () => Promise.reject(new Error('nope'));

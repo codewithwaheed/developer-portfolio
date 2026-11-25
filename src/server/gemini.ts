@@ -51,6 +51,8 @@ export async function askGemini(
     prompt: question,
     tools,
     maxOutputTokens: 400,
+    maxRetries: 0,
+    abortSignal: AbortSignal.timeout(10_000),
   });
   const rawToolCalls = result.toolCalls.map((c) => ({
     type: c.toolName as string,

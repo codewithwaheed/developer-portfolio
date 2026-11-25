@@ -28,10 +28,22 @@ const fallback = (reason: 'visitor_cap' | 'daily_cap' | 'quota' | 'error'): Agen
   text: FALLBACK_TEXT,
 });
 
-function isQuota(e: unknown): boolean {
-  const err = e as { statusCode?: number; status?: number; message?: string } | null;
-  if (err?.statusCode === 429 || err?.status === 429) return true;
-  return /quota|resource[_ ]exhausted/i.test(String(err?.message ?? ''));
+type ErrLike = {
+  statusCode?: number;
+  status?: number;
+  message?: string;
+  lastError?: unknown;
+  errors?: unknown[];
+};
+
+/** Detects a 429 on the error itself, a RetryError's lastError/errors, or a quota message. */
+function isQuota(e: unknown, depth = 0): boolean {
+  const err = e as ErrLike | null;
+  if (!err || typeof err !== 'object' || depth > 3) return false;
+  if (err.statusCode === 429 || err.status === 429) return true;
+  if (/quota|resource[_ ]exhausted/i.test(String(err.message ?? ''))) return true;
+  if (err.lastError && isQuota(err.lastError, depth + 1)) return true;
+  return Array.isArray(err.errors) && err.errors.some((x) => isQuota(x, depth + 1));
 }
 
 export async function handleAgentRequest(
