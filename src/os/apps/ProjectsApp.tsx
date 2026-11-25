@@ -1,0 +1,147 @@
+'use client';
+
+import type { Project, ProjectTag } from '@/content/types';
+import { useOS } from '../store';
+import { filterProjects } from './projectsFilter';
+
+const TAGS: ProjectTag[] = ['ai', 'blockchain', 'fintech', 'web'];
+
+function Row({ p, selected }: { p: Project; selected: boolean }) {
+  const openProject = useOS((s) => s.openProject);
+  return (
+    <button
+      type="button"
+      data-project-id={p.id}
+      aria-current={selected || undefined}
+      onClick={() => openProject(p.id)}
+      className={`w-full truncate rounded-md px-2.5 py-1.5 text-left text-sm ${
+        selected
+          ? 'bg-[var(--accent-soft)] text-[var(--fg)]'
+          : 'text-[var(--fg-muted)] hover:bg-[var(--hover)]'
+      }`}
+    >
+      {p.title}
+    </button>
+  );
+}
+
+function Detail({ p }: { p: Project }) {
+  const links = [
+    p.github && { label: 'GitHub', href: p.github },
+    p.external && { label: p.cta ?? 'Live', href: p.external },
+  ].filter(Boolean) as { label: string; href: string }[];
+  return (
+    <article className="p-5">
+      {p.cover && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={p.cover} alt={p.title} className="mb-4 w-full rounded-xl object-cover" />
+      )}
+      <h2 className="text-lg font-semibold text-[var(--fg)]">{p.title}</h2>
+      {p.company && <p className="text-xs text-[var(--fg-faint)]">{p.company}</p>}
+      <div
+        className="mt-3 space-y-2 text-sm leading-relaxed text-[var(--fg-muted)] [&_a]:text-[var(--accent)]"
+        dangerouslySetInnerHTML={{ __html: p.description }}
+      />
+      <ul className="mt-4 flex flex-wrap gap-1.5">
+        {p.tech.map((t) => (
+          <li
+            key={t}
+            className="rounded-full bg-[var(--control)] px-2.5 py-1 font-mono text-xs text-[var(--fg-muted)]"
+          >
+            {t}
+          </li>
+        ))}
+      </ul>
+      {links.length > 0 && (
+        <div className="mt-4 flex gap-4 text-sm">
+          {links.map((l) => (
+            <a
+              key={l.label}
+              href={l.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[var(--accent)] hover:underline"
+            >
+              {l.label}
+            </a>
+          ))}
+        </div>
+      )}
+    </article>
+  );
+}
+
+export function ProjectsApp({ projects }: { projects: Project[] }) {
+  const filter = useOS((s) => s.projectFilter);
+  const setProjectFilter = useOS((s) => s.setProjectFilter);
+  const openId = useOS((s) => s.openProjectId);
+
+  const companies = [...new Set(projects.map((p) => p.company).filter(Boolean))] as string[];
+  const shown = filterProjects(projects, filter);
+  const featured = shown.filter((p) => p.featured);
+  const archive = shown.filter((p) => !p.featured);
+  const selected = projects.find((p) => p.id === openId);
+
+  return (
+    <div className="flex h-full">
+      <div className="flex w-56 shrink-0 flex-col gap-3 overflow-auto border-r border-[var(--glass-edge)] p-3">
+        <div className="flex flex-wrap gap-1.5">
+          {TAGS.map((t) => {
+            const on = filter.tag === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setProjectFilter({ ...filter, tag: on ? undefined : t })}
+                className={`rounded-full px-2.5 py-1 text-xs ${
+                  on
+                    ? 'bg-[var(--accent)] text-white'
+                    : 'bg-[var(--control)] text-[var(--fg-muted)] hover:bg-[var(--hover)]'
+                }`}
+              >
+                {t}
+              </button>
+            );
+          })}
+        </div>
+        <select
+          aria-label="Company"
+          value={filter.company ?? ''}
+          onChange={(e) => setProjectFilter({ ...filter, company: e.target.value || undefined })}
+          className="rounded-md bg-[var(--control)] px-2 py-1.5 text-xs text-[var(--fg)]"
+        >
+          <option value="">All companies</option>
+          {companies.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        <div className="flex flex-col gap-0.5">
+          {featured.map((p) => (
+            <Row key={p.id} p={p} selected={p.id === openId} />
+          ))}
+        </div>
+        {archive.length > 0 && (
+          <div>
+            <p className="px-2.5 pb-1 font-mono text-[11px] text-[var(--fg-faint)]">archive/</p>
+            <div className="flex flex-col gap-0.5">
+              {archive.map((p) => (
+                <Row key={p.id} p={p} selected={p.id === openId} />
+              ))}
+            </div>
+          </div>
+        )}
+        {shown.length === 0 && <p className="text-xs text-[var(--fg-faint)]">No matches.</p>}
+      </div>
+      <div className="min-w-0 flex-1 overflow-auto">
+        {selected ? (
+          <Detail p={selected} />
+        ) : (
+          <p className="p-5 text-sm text-[var(--fg-faint)]">Select a project.</p>
+        )}
+      </div>
+    </div>
+  );
+}

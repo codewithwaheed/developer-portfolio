@@ -6,16 +6,30 @@ import type { PortfolioContent } from '@/content/types';
 import { useOS } from '../store';
 import { isAppId, type AppId } from '../apps/registry';
 import { AppBody } from '../apps/AppBody';
+import { MeApp } from '../apps/MeApp';
+import { ExperienceApp } from '../apps/ExperienceApp';
+import { ProjectsApp } from '../apps/ProjectsApp';
+import { ResumeApp } from '../apps/ResumeApp';
 import { Wallpaper } from './Wallpaper';
 import { MenuBar } from './MenuBar';
 import { DesktopIcons } from './DesktopIcons';
 import { Window } from './Window';
 import { Dock } from './Dock';
 
-// Placeholder bodies until Tasks 5 and 6 add the real apps, which read `content`.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// Apps not yet built (Tasks 6+) fall back to the placeholder body.
 function renderApp(id: AppId, content: PortfolioContent) {
-  return <AppBody id={id} />;
+  switch (id) {
+    case 'me':
+      return <MeApp about={content.about} />;
+    case 'experience':
+      return <ExperienceApp jobs={content.jobs} />;
+    case 'projects':
+      return <ProjectsApp projects={content.projects} />;
+    case 'resume':
+      return <ResumeApp />;
+    default:
+      return <AppBody id={id} />;
+  }
 }
 
 export function AgentOS({ content }: { content: PortfolioContent }) {
