@@ -5,7 +5,6 @@ import { AnimatePresence, MotionConfig } from 'motion/react';
 import type { PortfolioContent } from '@/content/types';
 import { useOS } from '../store';
 import { isAppId, type AppId } from '../apps/registry';
-import { AppBody } from '../apps/AppBody';
 import { MeApp } from '../apps/MeApp';
 import { ExperienceApp } from '../apps/ExperienceApp';
 import { ProjectsApp } from '../apps/ProjectsApp';
@@ -25,8 +24,12 @@ import { Lock } from './Lock';
 import { initialPhase, type Phase } from './bootFlow';
 import { safeStorage } from '@/lib/safeStorage';
 import { play, unlockAudio } from '@/sound/sound';
+import { useAgent } from '@/agent/agentStore';
+import { runAgentPlan } from '@/agent/run';
+import { AgentBar } from '@/agent/ui/AgentBar';
+import { AgentLog } from '@/agent/ui/AgentLog';
+import { GhostCursor } from '@/agent/ui/GhostCursor';
 
-// Apps not yet built (agentlog, Task 9) fall back to the placeholder body.
 function renderApp(id: AppId, content: PortfolioContent) {
   switch (id) {
     case 'me':
@@ -47,8 +50,8 @@ function renderApp(id: AppId, content: PortfolioContent) {
       return <SettingsApp skills={content.about.skills} />;
     case 'terminal':
       return <TerminalApp content={content} />;
-    default:
-      return <AppBody id={id} />;
+    case 'agentlog':
+      return <AgentLog />;
   }
 }
 
@@ -62,6 +65,7 @@ function prefersReducedMotion(): boolean {
 
 export function AgentOS({ content }: { content: PortfolioContent }) {
   const windows = useOS((s) => s.windows);
+  const agentStatus = useAgent((s) => s.status);
   // null until mounted: nothing is layered over the desktop during SSR/hydration.
   const [phase, setPhase] = useState<Phase | null>(null);
 
@@ -93,6 +97,11 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
     window.addEventListener('pointerdown', unlock);
     window.addEventListener('keydown', unlock);
 
+    // Development hook for driving the agent from the console.
+    if (process.env.NODE_ENV === 'development') {
+      (window as unknown as { __agent?: unknown }).__agent = { runAgentPlan, useAgent };
+    }
+
     return () => {
       window.removeEventListener('resize', sync);
       window.removeEventListener('pointerdown', unlock);
@@ -107,12 +116,15 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
     useOS.getState().openApp('me');
   }, []);
   const onRestart = useCallback(() => setPhase(prefersReducedMotion() ? 'lock' : 'boot'), []);
+  // Task 10 wires ask() and the guided tour.
+  const onAsk = useCallback((question: string) => void question, []);
+  const onTour = useCallback(() => {}, []);
 
   return (
     // reducedMotion="user": every Motion animation in the shell honours the OS setting.
     <MotionConfig reducedMotion="user">
       <div className="fixed inset-0 overflow-hidden">
-        <Wallpaper />
+        <Wallpaper thinking={agentStatus === 'thinking'} />
         <DesktopIcons />
         <AnimatePresence>
           {windows.map((w) => (
@@ -121,8 +133,10 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
             </Window>
           ))}
         </AnimatePresence>
-        <MenuBar onRestart={onRestart} />
+        <MenuBar agentStatus={agentStatus === 'idle' ? 'idle' : 'thinking'} onRestart={onRestart} />
         <Dock />
+        <AgentBar onSubmit={onAsk} onTour={onTour} />
+        <GhostCursor />
         {phase === 'boot' && <Boot onDone={onBootDone} />}
         {phase === 'lock' && <Lock onWake={onWake} />}
       </div>

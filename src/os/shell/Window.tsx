@@ -51,9 +51,12 @@ export function Window({ id, children }: { id: AppId; children: ReactNode }) {
     play(closing ? 'close' : 'open');
   }, [closing]);
 
-  // Move keyboard focus into the window when it becomes the focused one.
+  // Move keyboard focus into the window when it becomes the focused one,
+  // unless the visitor is typing in the agent bar (the agent opened it).
   useEffect(() => {
-    if (focused && !win?.minimized) ref.current?.focus({ preventScroll: true });
+    if (!focused || win?.minimized) return;
+    if (document.activeElement?.closest('[data-agent-bar]')) return;
+    ref.current?.focus({ preventScroll: true });
   }, [focused, win?.minimized]);
 
   if (!win) return null;
