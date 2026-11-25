@@ -11,6 +11,8 @@ github: null
 external: 'https://omnipresenti.com/'
 cta: null
 date: '3'
+company: 'Renesis Tech'
+tags: [blockchain, web]
 ---
 
 A digital space for artists to showcase, auction, and sell their artwork. The platform includes bidding, video calls, and chat support to facilitate interactions between artists and buyers.

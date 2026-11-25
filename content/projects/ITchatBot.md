@@ -11,6 +11,7 @@ tech:
   - 'Socket.io'
 company: '10Pearls'
 showInProjects: false
+tags: [ai, web]
 ---
 
 Our IT Support Assistant helps with troubleshooting, software installations, and system maintenance. Whether you're facing technical issues, need software updates, or require system optimizations, we provide reliable and efficient support. Keep your devices running smoothly with expert assistance at your fingertips.

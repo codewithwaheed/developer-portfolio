@@ -10,6 +10,7 @@ tech:
   - 'Next.js'
 company: 'Renesis Tech'
 showInProjects: false
+tags: [fintech, web]
 ---
 
 A fintech platform enabling seamless buying and selling of used vehicles with instant online financing, built to enhance accessibility and user experience in auto transactions.

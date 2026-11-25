@@ -12,6 +12,8 @@ github: null
 external: 'https://vaffacosmo.io'
 cta: null
 date: '2'
+company: 'Renesis Tech'
+tags: [blockchain, web]
 ---
 
 An NFT marketplace integrated with a mobile game where users can stake, auction, and trade NFTs earned in-game. The platform provides exclusive tokens and perks to enhance user engagement.

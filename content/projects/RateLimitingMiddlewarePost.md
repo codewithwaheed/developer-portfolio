@@ -9,6 +9,7 @@ tech:
   - Redis
 company: 'Renesis Tech'
 showInProjects: true
+tags: [web]
 ---
 
 Build a Rate Limiting Middleware for Node.js and Express which restrict user's

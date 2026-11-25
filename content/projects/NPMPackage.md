@@ -9,6 +9,7 @@ tech:
   - NPM
 company: '10Pearls'
 showInProjects: true
+tags: [web]
 ---
 
 I’ll walk you through the steps to publish your first package to NPM and set up continuous deployment using GitHub Actions.

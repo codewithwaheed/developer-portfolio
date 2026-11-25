@@ -10,6 +10,8 @@ github: null
 external: 'https://financethat.ca/'
 cta: null
 date: '1'
+company: 'Renesis Tech'
+tags: [fintech, web]
 ---
 
 A fintech platform enabling seamless buying and selling of used vehicles with instant online financing, built to enhance accessibility and user experience in auto transactions.

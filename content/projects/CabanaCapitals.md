@@ -9,6 +9,7 @@ tech:
   - Postgres
 company: 'Webwrite'
 showInProjects: true
+tags: [fintech, web]
 ---
 
 Cabana Capitals is a multinational forex trading platform , which provides its trading services across the world

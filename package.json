@@ -13,7 +13,7 @@
     "sync-content-assets": "tsx scripts/sync-content-assets.ts",
     "build": "npm run sync-content-assets && next build",
     "start": "next start",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "e2e": "playwright test",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,css}\"",

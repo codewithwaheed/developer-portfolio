@@ -9,6 +9,7 @@ tech:
   - Tailwind
 company: 'Renesis Tech'
 showInProjects: true
+tags: [web]
 ---
 
 Built a tourism and booking application with API integrations and responsive design, focusing on smooth user navigation and performance optimization.

@@ -10,6 +10,7 @@ tech:
   - 'Redux'
 company: 'Renesis Tech'
 showInProjects: false
+tags: [blockchain, web]
 ---
 
 A digital space for artists to showcase, auction, and sell their artwork. The platform includes bidding, video calls, and chat support to facilitate interactions between artists and buyers.

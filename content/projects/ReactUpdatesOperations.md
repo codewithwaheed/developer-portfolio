@@ -9,6 +9,7 @@ tech:
   - UI/UX
 company: 'Webwrite'
 showInProjects: true
+tags: [web]
 ---
 
 Optimistic and pessimistic operations are two essential tools in a developer’s arsenal. Understanding when to implement each approach can greatly impact the user experience of your application.

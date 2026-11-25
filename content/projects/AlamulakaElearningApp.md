@@ -10,6 +10,7 @@ tech:
   - Redux
 company: 'Webwrite'
 showInProjects: true
+tags: [web]
 ---
 
 Alamulaka is e-learning turkish application consist on parent/student , teacher and admin side modules

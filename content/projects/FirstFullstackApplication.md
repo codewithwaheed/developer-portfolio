@@ -11,6 +11,7 @@ company: 'Webwrite'
 ios: 'dummary'
 android: 'dummy'
 showInProjects: true
+tags: [web]
 ---
 
 We’ll walk through the process of building a full-stack ToDo application using MongoDB for data storage, React.js for the frontend, and Node.js for the backend. By following this guide, you’ll learn how to create, read, update, and delete ToDo items.

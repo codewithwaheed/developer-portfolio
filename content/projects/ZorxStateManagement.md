@@ -9,6 +9,7 @@ tech:
   - GlobalState
 company: '10Pearls'
 showInProjects: true
+tags: [web]
 ---
 
 This is a simple yet powerful global state management library built using React's useSyncExternalStore. It allows you to manage global state across multiple components, handle both primitive and object states, and optionally persist the state using localStorage.

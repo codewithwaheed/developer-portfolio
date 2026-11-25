@@ -10,6 +10,7 @@ tech:
   - 'AWS'
 company: '10Pearls'
 showInProjects: false
+tags: [fintech, web]
 ---
 
 Finmark is a comprehensive financial management platform that empowers companies to understand their finances, plan for growth, fundraise efficiently, and build accurate financial models.
