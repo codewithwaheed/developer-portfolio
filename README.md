@@ -4,42 +4,21 @@
 
 ![demo](https://raw.githubusercontent.com/codewithwaheed/developer-portfolio/main/src/images/demo.png)
 
-## 🛠 Installation & Set Up
+## Development
 
-1. Install the Gatsby CLI
+```sh
+npm install
+npm run dev
+npm test
+```
 
-   ```sh
-   npm install -g gatsby-cli
-   ```
+## Supabase setup (AI agent state)
 
-2. Install and use the correct version of Node using [NVM](https://github.com/nvm-sh/nvm)
+The `/api/agent` route keeps rate limits, the daily ceiling, the answer cache and a question log in Supabase. Without Supabase configured, local dev falls back to an in-memory store.
 
-   ```sh
-   nvm install
-   ```
+1. Create a Supabase project.
+2. In Database -> Extensions, enable `pg_cron`.
+3. Run `supabase/migrations/0001_agent.sql` in the SQL editor (or `supabase db push`).
+4. Set the env vars from `.env.example` in Vercel (server-side only, never `NEXT_PUBLIC_`): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `IP_HASH_SALT`, plus the Gemini and agent limit settings.
 
-3. Install dependencies
-
-   ```sh
-   yarn
-   ```
-
-4. Start the development server
-
-   ```sh
-   npm start
-   ```
-
-## 🚀 Building and Running for Production
-
-1. Generate a full static production build
-
-   ```sh
-   npm run build
-   ```
-
-1. Preview the site as it will appear once deployed
-
-   ```sh
-   npm run serve
-   ```
+All tables have row-level security enabled with no policies, so only the service key can read or write them. Raw IPs are never stored (salted SHA-256 only), and a daily `agentos-cleanup` job removes expired rate-limit and cache rows. The question log is kept and holds no identifiers.
