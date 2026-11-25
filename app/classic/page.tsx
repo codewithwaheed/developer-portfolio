@@ -2,12 +2,13 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { getContent } from '@/content/load';
 import { siteConfig } from '@/config/site';
+import { baseOpenGraph } from '@/seo/metadata';
 import { SeoSections } from '@/seo/SeoContent';
 
 export const metadata: Metadata = {
   title: `${siteConfig.name} · Classic view`,
   alternates: { canonical: '/classic' },
-  openGraph: { title: `${siteConfig.name} · Classic view`, url: '/classic' },
+  openGraph: { ...baseOpenGraph, title: `${siteConfig.name} · Classic view`, url: '/classic' },
 };
 
 export default async function Classic() {

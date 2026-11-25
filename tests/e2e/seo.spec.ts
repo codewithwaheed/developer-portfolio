@@ -74,3 +74,11 @@ test('home has canonical and og metadata', async ({ request }) => {
   expect(html).toContain('rel="canonical"');
   expect(html).toContain('og.png');
 });
+
+for (const path of ['/', '/classic', '/pensieve/dark-mode-toggle']) {
+  test(`${path} keeps og:image and og:site_name`, async ({ request }) => {
+    const html = await (await request.get(path)).text();
+    expect(html).toMatch(/<meta property="og:image" content="[^"]*og\.png"/);
+    expect(html).toContain('property="og:site_name"');
+  });
+}

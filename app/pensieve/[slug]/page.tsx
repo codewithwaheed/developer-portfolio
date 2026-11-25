@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getContent, getPost } from '@/content/load';
+import { baseOpenGraph } from '@/seo/metadata';
 import { PostRedirect } from '@/seo/PostRedirect';
 
 type Params = { slug: string };
@@ -19,6 +20,8 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     description: post.description,
     alternates: { canonical: `/pensieve/${post.slug}` },
     openGraph: {
+      ...baseOpenGraph,
+      type: 'article',
       title: post.title,
       description: post.description,
       url: `/pensieve/${post.slug}`,

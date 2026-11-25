@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
+import { baseOpenGraph } from '@/seo/metadata';
 import { siteConfig } from '@/config/site';
 import { themeScript } from '@/os/themeScript';
 import './globals.css';
@@ -14,14 +15,7 @@ export const metadata: Metadata = {
   title,
   description,
   alternates: { canonical: '/' },
-  openGraph: {
-    title,
-    description,
-    url: '/',
-    siteName: siteConfig.name,
-    images: ['/og.png'],
-    type: 'website',
-  },
+  openGraph: { ...baseOpenGraph, title, description, url: '/' },
   twitter: { card: 'summary_large_image', title, description, images: ['/og.png'] },
 };
 
