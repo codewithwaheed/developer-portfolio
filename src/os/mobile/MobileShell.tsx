@@ -45,6 +45,21 @@ export function MobileShell({ agentStatus, renderApp }: Props) {
   const top = topWindow(windows);
   const reduce = useReducedMotion() ?? false;
 
+  // Single-app model: whatever opens an app (a tap, the agent, a link inside an app),
+  // every other window closes, so Back always lands on the home screen.
+  useEffect(() => {
+    const keepOnlyTop = () => {
+      const { windows: all, closeApp } = useOS.getState();
+      if (all.length < 2) return;
+      const keep = topWindow(all)?.id;
+      all.forEach((w) => w.id !== keep && closeApp(w.id));
+    };
+    keepOnlyTop();
+    return useOS.subscribe((s, prev) => {
+      if (s.windows !== prev.windows) keepOnlyTop();
+    });
+  }, []);
+
   return (
     <>
       <StatusBar agentStatus={agentStatus} />

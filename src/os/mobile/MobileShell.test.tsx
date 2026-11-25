@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AgentOS } from '../shell/AgentOS';
 import { resetOS, useOS } from '../store';
+import { runAgentPlan } from '@/agent/run';
+import { resetAgent } from '@/agent/agentStore';
 import type { PortfolioContent } from '@/content/types';
 
 const content: PortfolioContent = {
@@ -38,6 +40,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   resetOS();
+  resetAgent();
   vi.unstubAllGlobals();
 });
 
@@ -71,6 +74,8 @@ describe('AgentOS Mobile', () => {
     fireEvent.click(icon('projects'));
     expect(screen.getByRole('dialog', { name: 'projects/' })).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'me.md' })).toBeNull());
+    // Single-app model: the tap closed me.md, so Back goes straight home.
+    expect(state().windows.map((w) => w.id)).toEqual(['projects']);
   });
 
   it('has a status bar with availability and a mute toggle', () => {
@@ -79,4 +84,25 @@ describe('AgentOS Mobile', () => {
     expect(within(bar).getByText('open for work')).toBeInTheDocument();
     expect(within(bar).getByRole('button', { name: /mute sounds/i })).toBeInTheDocument();
   });
+  it('runs agent plans one app at a time, without agent.log, and Back goes home', async () => {
+    const user = userEvent.setup();
+    render(<AgentOS content={content} />);
+    fireEvent.keyDown(screen.getByRole('dialog', { name: 'Lock screen' }), { key: 'Enter' });
+    const opened: string[] = [];
+    const off = useOS.subscribe((s) => s.windows.forEach((w) => opened.push(w.id)));
+
+    await act(() =>
+      runAgentPlan([
+        { type: 'open_app', app: 'projects' },
+        { type: 'open_app', app: 'experience' },
+      ]),
+    );
+    off();
+
+    expect(opened).not.toContain('agentlog');
+    expect(state().windows.map((w) => w.id)).toEqual(['experience']);
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    expect(state().windows).toHaveLength(0);
+    await waitFor(() => expect(screen.getByRole('grid', { name: 'Home screen' })).toBeVisible());
+  }, 10_000);
 });

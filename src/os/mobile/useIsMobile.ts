@@ -10,6 +10,11 @@ function query(): MediaQueryList | null {
     : null;
 }
 
+/** Plain check for non-React code (the agent runner). */
+export function isMobileViewport(): boolean {
+  return query()?.matches ?? false;
+}
+
 function subscribe(onChange: () => void): () => void {
   const mql = query();
   if (!mql?.addEventListener) return () => {};
@@ -19,9 +24,5 @@ function subscribe(onChange: () => void): () => void {
 
 /** True below 768px. The server (and hydration) always renders the desktop. */
 export function useIsMobile(): boolean {
-  return useSyncExternalStore(
-    subscribe,
-    () => query()?.matches ?? false,
-    () => false,
-  );
+  return useSyncExternalStore(subscribe, isMobileViewport, () => false);
 }

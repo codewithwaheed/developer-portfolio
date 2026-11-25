@@ -1,5 +1,6 @@
 import { useOS } from '@/os/store';
 import { appMeta } from '@/os/apps/registry';
+import { isMobileViewport } from '@/os/mobile/useIsMobile';
 import type { AgentAction } from './actions';
 import { runPlan } from './executor';
 import { useAgent } from './agentStore';
@@ -12,6 +13,27 @@ function prefersReducedMotion(): boolean {
     typeof window.matchMedia === 'function' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches
   );
+}
+
+const HOME_SETTLE_MS = 350; // the home screen's spring back to full size
+const HOME_WAIT_FRAMES = 30;
+const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
+
+/**
+ * Phones show one app at a time, covering the home screen. Before the agent points at a
+ * home-screen icon, close every app and wait for the home screen to be live again, so the
+ * pulse ring lands on a visible icon.
+ */
+async function goHome(reducedMotion: boolean): Promise<void> {
+  const os = useOS.getState();
+  if (os.windows.length === 0) return;
+  os.windows.forEach((w) => os.closeApp(w.id));
+  for (let i = 0; i < HOME_WAIT_FRAMES; i++) {
+    await nextFrame();
+    const grid = document.querySelector('[role="grid"][aria-label="Home screen"]');
+    if (grid && !grid.closest('[inert]')) break;
+  }
+  if (!reducedMotion) await new Promise((r) => setTimeout(r, HOME_SETTLE_MS));
 }
 
 /** Open agent.log in the lower right, out of the way of the windows the agent opens. */
@@ -42,14 +64,21 @@ export async function runAgentPlan(
 
   agent.clearLog();
   agent.setStatus('acting');
-  if (actions.some((a) => a.type !== 'say')) showAgentLog();
+  const mobile = isMobileViewport();
+  const reducedMotion = prefersReducedMotion();
+  // Phones are single-app: agent.log would cover the apps the agent opens.
+  if (!mobile && actions.some((a) => a.type !== 'say')) showAgentLog();
 
   const os = useOS.getState();
+  const moveCursorTo = async (selector: string) => {
+    if (mobile && selector.startsWith('[data-app-icon')) await goHome(reducedMotion);
+    await cursor.moveTo(selector);
+  };
   try {
     return await runPlan(
       actions,
       {
-        moveCursorTo: (selector) => cursor.moveTo(selector),
+        moveCursorTo,
         click: () => cursor.click(),
         os: {
           openApp: os.openApp,
@@ -62,7 +91,7 @@ export async function runAgentPlan(
         say: (text) => useAgent.getState().setReply(text),
         // Starting the tour supersedes the running plan (it is always the last step).
         startTour: opts.startTour ?? (() => void runAgentPlan(TOUR)),
-        reducedMotion: prefersReducedMotion(),
+        reducedMotion,
       },
       signal,
     );
