@@ -10,13 +10,18 @@ import { MeApp } from '../apps/MeApp';
 import { ExperienceApp } from '../apps/ExperienceApp';
 import { ProjectsApp } from '../apps/ProjectsApp';
 import { ResumeApp } from '../apps/ResumeApp';
+import { ConsultApp } from '../apps/ConsultApp';
+import { PensieveApp } from '../apps/PensieveApp';
+import { MessagesApp } from '../apps/MessagesApp';
+import { SettingsApp } from '../apps/SettingsApp';
+import { TerminalApp } from '../apps/TerminalApp';
 import { Wallpaper } from './Wallpaper';
 import { MenuBar } from './MenuBar';
 import { DesktopIcons } from './DesktopIcons';
 import { Window } from './Window';
 import { Dock } from './Dock';
 
-// Apps not yet built (Tasks 6+) fall back to the placeholder body.
+// Apps not yet built (agentlog, Task 9) fall back to the placeholder body.
 function renderApp(id: AppId, content: PortfolioContent) {
   switch (id) {
     case 'me':
@@ -27,6 +32,16 @@ function renderApp(id: AppId, content: PortfolioContent) {
       return <ProjectsApp projects={content.projects} />;
     case 'resume':
       return <ResumeApp />;
+    case 'consult':
+      return <ConsultApp />;
+    case 'pensieve':
+      return <PensieveApp posts={content.posts} />;
+    case 'messages':
+      return <MessagesApp />;
+    case 'settings':
+      return <SettingsApp skills={content.about.skills} />;
+    case 'terminal':
+      return <TerminalApp content={content} />;
     default:
       return <AppBody id={id} />;
   }
