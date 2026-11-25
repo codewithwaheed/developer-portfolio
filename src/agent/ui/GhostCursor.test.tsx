@@ -35,4 +35,23 @@ describe('GhostCursor', () => {
     });
     expect(ghost()).toHaveAttribute('data-visible', 'false');
   });
+  it('pulse mode rings the target and resolves, even when the target is missing', async () => {
+    render(<GhostCursor mode="pulse" />);
+    const target = document.createElement('button');
+    target.dataset.appIcon = 'me';
+    target.getBoundingClientRect = () => new DOMRect(100, 100, 40, 40);
+    document.body.appendChild(target);
+    act(() => {
+      useAgent.getState().start();
+      useAgent.getState().setStatus('acting');
+    });
+    const pulse = () => document.querySelector('[data-ghost-pulse]')!;
+    expect(pulse()).toHaveAttribute('data-visible', 'false');
+
+    await act(() => cursor.moveTo('[data-app-icon="me"]'));
+    expect(pulse()).toHaveAttribute('data-visible', 'true');
+    await act(() => cursor.click());
+
+    await expect(act(() => cursor.moveTo('[data-app-icon="nope"]'))).resolves.toBeUndefined();
+  });
 });

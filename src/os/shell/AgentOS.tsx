@@ -32,6 +32,8 @@ import { TOUR } from '@/agent/tour';
 import { AgentBar } from '@/agent/ui/AgentBar';
 import { AgentLog } from '@/agent/ui/AgentLog';
 import { GhostCursor } from '@/agent/ui/GhostCursor';
+import { MobileShell } from '../mobile/MobileShell';
+import { useIsMobile } from '../mobile/useIsMobile';
 
 function renderApp(id: AppId, content: PortfolioContent) {
   switch (id) {
@@ -70,6 +72,7 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
   const windows = useOS((s) => s.windows);
   const agentStatus = useAgent((s) => s.status);
   const fallback = useAgent((s) => s.fallback);
+  const isMobile = useIsMobile();
   // Defaults until mounted: memory lives in localStorage, which SSR cannot read.
   const [memoryChips, setMemoryChips] = useState(DEFAULT_CHIPS);
   // null until mounted: nothing is layered over the desktop during SSR/hydration.
@@ -141,28 +144,37 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
   const onRestart = useCallback(() => setPhase(prefersReducedMotion() ? 'lock' : 'boot'), []);
   const onAsk = useCallback((question: string) => void ask(question), []);
   const onTour = useCallback(() => void runAgentPlan(TOUR), []);
+  const renderMobileApp = useCallback((id: AppId) => renderApp(id, content), [content]);
+  const menuStatus = agentStatus === 'idle' ? 'idle' : 'thinking';
 
   return (
     // reducedMotion="user": every Motion animation in the shell honours the OS setting.
     <MotionConfig reducedMotion="user">
       <div className="fixed inset-0 overflow-hidden">
         <Wallpaper thinking={agentStatus === 'thinking'} />
-        <DesktopIcons />
-        <AnimatePresence>
-          {windows.map((w) => (
-            <Window key={w.id} id={w.id}>
-              {renderApp(w.id, content)}
-            </Window>
-          ))}
-        </AnimatePresence>
-        <MenuBar agentStatus={agentStatus === 'idle' ? 'idle' : 'thinking'} onRestart={onRestart} />
-        <Dock />
+        {isMobile ? (
+          <MobileShell agentStatus={menuStatus} renderApp={renderMobileApp} />
+        ) : (
+          <>
+            <DesktopIcons />
+            <AnimatePresence>
+              {windows.map((w) => (
+                <Window key={w.id} id={w.id}>
+                  {renderApp(w.id, content)}
+                </Window>
+              ))}
+            </AnimatePresence>
+            <MenuBar agentStatus={menuStatus} onRestart={onRestart} />
+            <Dock />
+          </>
+        )}
         <AgentBar
+          variant={isMobile ? 'sheet' : 'bar'}
           onSubmit={onAsk}
           onTour={onTour}
           suggestions={fallback ? FALLBACK_SUGGESTIONS : memoryChips}
         />
-        <GhostCursor />
+        <GhostCursor mode={isMobile ? 'pulse' : 'pointer'} />
         {phase === 'boot' && <Boot onDone={onBootDone} />}
         {phase === 'lock' && <Lock onWake={onWake} />}
       </div>

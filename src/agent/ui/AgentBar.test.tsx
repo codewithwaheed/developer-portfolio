@@ -28,4 +28,26 @@ describe('AgentBar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Who are you?' }));
     expect(onSubmit).toHaveBeenCalledWith('Who are you?');
   });
+  it('renders as a bottom sheet: input when collapsed, chips once expanded', () => {
+    const onSubmit = vi.fn();
+    render(
+      <AgentBar
+        variant="sheet"
+        onSubmit={onSubmit}
+        onTour={() => {}}
+        suggestions={['Who are you?']}
+      />,
+    );
+    const input = screen.getByRole('textbox', { name: 'Ask AgentOS' });
+    expect(input.closest('[data-agent-bar]')).toHaveAttribute('data-variant', 'sheet');
+    expect(screen.queryByRole('list', { name: 'Suggestions' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Expand agent' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Who are you?' }));
+    expect(onSubmit).toHaveBeenCalledWith('Who are you?');
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse agent' }));
+    expect(screen.getByRole('button', { name: 'Expand agent' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
 });
