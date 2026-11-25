@@ -26,6 +26,9 @@ import { safeStorage } from '@/lib/safeStorage';
 import { play, unlockAudio } from '@/sound/sound';
 import { useAgent } from '@/agent/agentStore';
 import { runAgentPlan } from '@/agent/run';
+import { ask, setAskContent, FALLBACK_SUGGESTIONS } from '@/agent/client';
+import { memory, DEFAULT_CHIPS } from '@/agent/memory';
+import { TOUR } from '@/agent/tour';
 import { AgentBar } from '@/agent/ui/AgentBar';
 import { AgentLog } from '@/agent/ui/AgentLog';
 import { GhostCursor } from '@/agent/ui/GhostCursor';
@@ -66,8 +69,28 @@ function prefersReducedMotion(): boolean {
 export function AgentOS({ content }: { content: PortfolioContent }) {
   const windows = useOS((s) => s.windows);
   const agentStatus = useAgent((s) => s.status);
+  const fallback = useAgent((s) => s.fallback);
+  // Defaults until mounted: memory lives in localStorage, which SSR cannot read.
+  const [memoryChips, setMemoryChips] = useState(DEFAULT_CHIPS);
   // null until mounted: nothing is layered over the desktop during SSR/hydration.
   const [phase, setPhase] = useState<Phase | null>(null);
+
+  // Memory: remember every app that opens, and keep the suggestion chips in step with it.
+  useEffect(() => {
+    setAskContent(content);
+    const refresh = () => setMemoryChips(memory.suggestions());
+    const recordOpen = () => useOS.getState().windows.forEach((w) => memory.recordOpen(w.id));
+    const offMemory = memory.subscribe(refresh);
+    const offOS = useOS.subscribe((s, prev) => {
+      if (s.windows !== prev.windows) recordOpen();
+    });
+    recordOpen();
+    refresh();
+    return () => {
+      offMemory();
+      offOS();
+    };
+  }, [content]);
 
   useEffect(() => {
     const { setViewport, openApp } = useOS.getState();
@@ -116,9 +139,8 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
     useOS.getState().openApp('me');
   }, []);
   const onRestart = useCallback(() => setPhase(prefersReducedMotion() ? 'lock' : 'boot'), []);
-  // Task 10 wires ask() and the guided tour.
-  const onAsk = useCallback((question: string) => void question, []);
-  const onTour = useCallback(() => {}, []);
+  const onAsk = useCallback((question: string) => void ask(question), []);
+  const onTour = useCallback(() => void runAgentPlan(TOUR), []);
 
   return (
     // reducedMotion="user": every Motion animation in the shell honours the OS setting.
@@ -135,7 +157,11 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
         </AnimatePresence>
         <MenuBar agentStatus={agentStatus === 'idle' ? 'idle' : 'thinking'} onRestart={onRestart} />
         <Dock />
-        <AgentBar onSubmit={onAsk} onTour={onTour} />
+        <AgentBar
+          onSubmit={onAsk}
+          onTour={onTour}
+          suggestions={fallback ? FALLBACK_SUGGESTIONS : memoryChips}
+        />
         <GhostCursor />
         {phase === 'boot' && <Boot onDone={onBootDone} />}
         {phase === 'lock' && <Lock onWake={onWake} />}

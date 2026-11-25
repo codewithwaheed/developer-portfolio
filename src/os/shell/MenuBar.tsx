@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { IconMoon, IconSun, IconVolume, IconVolumeOff } from '@tabler/icons-react';
 import { siteConfig } from '@/config/site';
 import { isMuted, setMuted, subscribeMuted } from '@/sound/sound';
+import { memory } from '@/agent/memory';
 import { useOS } from '../store';
 import { useTheme } from '../theme';
 import { formatClock } from './clock';
@@ -103,7 +104,7 @@ export function MenuBar({ agentStatus = 'idle', onRestart = () => {} }: Props) {
       id: 'memory',
       name: 'Memory',
       label: 'Memory',
-      items: [{ label: 'Clear memory', onSelect: () => {}, disabled: true }],
+      items: [{ label: 'Clear memory', onSelect: () => memory.clear() }],
     },
     {
       id: 'help',

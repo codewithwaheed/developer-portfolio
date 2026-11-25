@@ -4,6 +4,7 @@ import type { AgentAction } from './actions';
 import { runPlan } from './executor';
 import { useAgent } from './agentStore';
 import { cursor } from './ui/GhostCursor';
+import { TOUR } from './tour';
 
 function prefersReducedMotion(): boolean {
   return (
@@ -59,7 +60,8 @@ export async function runAgentPlan(
         },
         log: (line) => useAgent.getState().pushLog(line),
         say: (text) => useAgent.getState().setReply(text),
-        startTour: opts.startTour ?? (() => {}),
+        // Starting the tour supersedes the running plan (it is always the last step).
+        startTour: opts.startTour ?? (() => void runAgentPlan(TOUR)),
         reducedMotion: prefersReducedMotion(),
       },
       signal,

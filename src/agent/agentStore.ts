@@ -6,6 +6,8 @@ export interface AgentState {
   status: AgentStatus;
   log: string[];
   reply: string;
+  /** True after the model was unavailable: the bar offers fallback chips. */
+  fallback: boolean;
   controller?: AbortController;
 }
 
@@ -20,14 +22,14 @@ export interface AgentStoreActions {
   abort(): void;
 }
 
-const initialState = (): AgentState => ({ status: 'idle', log: [], reply: '' });
+const initialState = (): AgentState => ({ status: 'idle', log: [], reply: '', fallback: false });
 
 export const useAgent = create<AgentState & AgentStoreActions>()((set, get) => ({
   ...initialState(),
   start: () => {
     get().controller?.abort();
     const controller = new AbortController();
-    set({ controller, status: 'thinking' });
+    set({ controller, status: 'thinking', fallback: false });
     return controller.signal;
   },
   setStatus: (status) => set({ status }),
