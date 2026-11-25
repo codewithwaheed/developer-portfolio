@@ -28,7 +28,8 @@ function Row({ p, selected }: { p: Project; selected: boolean }) {
 function Detail({ p }: { p: Project }) {
   const links = [
     p.github && { label: 'GitHub', href: p.github },
-    p.external && { label: p.cta ?? 'Live', href: p.external },
+    p.external && { label: 'Live', href: p.external },
+    p.cta && { label: 'Article', href: p.cta },
   ].filter(Boolean) as { label: string; href: string }[];
   return (
     <article className="p-5">
