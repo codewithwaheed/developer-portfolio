@@ -37,7 +37,9 @@ function beacon(question: string, intent: string): void {
   }
 }
 
-function fallback(): void {
+/** Show the fallback copy, unless a newer run (e.g. the tour) has taken over. */
+function fallback(signal: AbortSignal): void {
+  if (signal.aborted || useAgent.getState().controller?.signal !== signal) return;
   useAgent.setState({
     reply: FALLBACK_TEXT,
     status: 'idle',
@@ -54,9 +56,11 @@ export async function ask(question: string): Promise<void> {
 
   const scripted = content ? matchIntent(q, content) : null;
   if (scripted) {
-    useAgent.getState().pushLog(`✓ understood: ${scripted.id}`);
     beacon(q, scripted.id);
-    await runAgentPlan(scripted.actions);
+    await runAgentPlan(scripted.actions, {
+      signal,
+      initialLog: [`✓ understood: ${scripted.id}`],
+    });
     return;
   }
 
@@ -69,14 +73,15 @@ export async function ask(question: string): Promise<void> {
     });
     const data = (await res.json()) as { source?: string; text?: string; actions?: unknown };
     if (signal.aborted) return;
-    if (data.source !== 'gemini' && data.source !== 'cache') return fallback();
+    if (data.source !== 'gemini' && data.source !== 'cache') return fallback(signal);
 
     const actions = sanitizeActions(data.actions, knownOf(content));
+    if (useAgent.getState().controller?.signal !== signal) return;
     if (data.text && !actions.some((a) => a.type === 'say')) {
       useAgent.getState().setReply(data.text);
     }
-    await runAgentPlan(actions);
+    await runAgentPlan(actions, { signal });
   } catch {
-    if (!signal.aborted) fallback();
+    fallback(signal);
   }
 }

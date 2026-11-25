@@ -12,7 +12,7 @@ export interface AgentState {
 }
 
 export interface AgentStoreActions {
-  /** Abort any running plan and begin a new one (status: thinking). */
+  /** Abort any running plan and begin a new one (status: thinking, stale reply cleared). */
   start(): AbortSignal;
   setStatus(status: AgentStatus): void;
   pushLog(line: string): void;
@@ -29,7 +29,7 @@ export const useAgent = create<AgentState & AgentStoreActions>()((set, get) => (
   start: () => {
     get().controller?.abort();
     const controller = new AbortController();
-    set({ controller, status: 'thinking', fallback: false });
+    set({ controller, status: 'thinking', reply: '', fallback: false });
     return controller.signal;
   },
   setStatus: (status) => set({ status }),

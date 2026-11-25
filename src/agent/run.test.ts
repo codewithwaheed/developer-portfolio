@@ -29,10 +29,44 @@ describe('runAgentPlan', () => {
     expect(open).not.toContain('me');
   });
 
-  it('reuses the controller of a start() that has no plan running yet', async () => {
+  it('continues the run that owns an explicit signal', async () => {
     const signal = useAgent.getState().start();
-    expect(await runAgentPlan([{ type: 'say', text: 'hi' }])).toBe('done');
+    expect(await runAgentPlan([{ type: 'say', text: 'hi' }], { signal })).toBe('done');
     expect(signal.aborted).toBe(false);
     expect(useAgent.getState().reply).toBe('hi');
+    expect(useAgent.getState().status).toBe('idle');
+  });
+
+  it('without a signal always starts its own run, even while thinking', async () => {
+    const signal = useAgent.getState().start();
+    expect(await runAgentPlan([{ type: 'say', text: 'hi' }])).toBe('done');
+    expect(signal.aborted).toBe(true);
+  });
+
+  it('a superseded signal does not run', async () => {
+    const stale = useAgent.getState().start();
+    useAgent.getState().start();
+    expect(await runAgentPlan([{ type: 'open_app', app: 'me' }], { signal: stale })).toBe(
+      'interrupted',
+    );
+    expect(useOS.getState().windows).toEqual([]);
+  });
+
+  it('seeds agent.log with initialLog instead of clearing it', async () => {
+    useAgent.getState().pushLog('old line');
+    const signal = useAgent.getState().start();
+    await runAgentPlan([{ type: 'say', text: 'hi' }], { signal, initialLog: ['✓ understood: x'] });
+    expect(useAgent.getState().log[0]).toBe('✓ understood: x');
+    expect(useAgent.getState().log).not.toContain('old line');
+  });
+});
+
+describe('agentStore.start', () => {
+  it('clears a stale reply and the fallback flag', () => {
+    useAgent.setState({ reply: 'old answer', fallback: true });
+    useAgent.getState().start();
+    expect(useAgent.getState().reply).toBe('');
+    expect(useAgent.getState().fallback).toBe(false);
+    expect(useAgent.getState().status).toBe('thinking');
   });
 });

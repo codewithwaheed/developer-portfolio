@@ -49,20 +49,25 @@ function showAgentLog() {
 
 /**
  * Run a plan on the real desktop: ghost cursor, OS store, agent.log and reply.
- * Reuses the controller from a preceding `start()` (Task 10 calls start, asks, then this).
+ * Without `signal` the plan begins its own run (start(), aborting whatever is running).
+ * With `signal` it continues the run that owns it (ask() calls start(), resolves the
+ * question, then this); a superseded or aborted signal returns 'interrupted' at once.
  */
 export async function runAgentPlan(
   actions: AgentAction[],
-  opts: { startTour?: () => void } = {},
+  opts: { startTour?: () => void; signal?: AbortSignal; initialLog?: string[] } = {},
 ): Promise<'done' | 'interrupted'> {
   const agent = useAgent.getState();
-  const current = agent.controller;
-  // Reuse only a fresh start() (thinking, no plan yet); otherwise start() aborts any running plan.
-  const reuse = agent.status === 'thinking' && current && !current.signal.aborted;
-  const signal = reuse ? current.signal : agent.start();
+  let signal: AbortSignal;
+  if (opts.signal) {
+    if (opts.signal.aborted || agent.controller?.signal !== opts.signal) return 'interrupted';
+    signal = opts.signal;
+  } else {
+    signal = agent.start();
+  }
   const controller = useAgent.getState().controller;
 
-  agent.clearLog();
+  useAgent.setState({ log: opts.initialLog ? [...opts.initialLog] : [] });
   agent.setStatus('acting');
   const mobile = isMobileViewport();
   const reducedMotion = prefersReducedMotion();

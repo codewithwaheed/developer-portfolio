@@ -4,6 +4,8 @@ import { resetOS, useOS } from '@/os/store';
 import { FALLBACK_TEXT } from './actions';
 import { resetAgent, useAgent } from './agentStore';
 import { ask, setAskContent } from './client';
+import { runAgentPlan } from './run';
+import { TOUR } from './tour';
 
 const content: PortfolioContent = {
   about: { html: '', skills: [], photo: '/me.jpg' },
@@ -35,6 +37,12 @@ const content: PortfolioContent = {
 };
 
 const json = (body: unknown) => ({ ok: true, json: async () => body }) as Response;
+
+const deferred = () => {
+  let resolve!: (r: Response) => void;
+  const promise = new Promise<Response>((r) => (resolve = r));
+  return { promise, resolve };
+};
 
 let fetchMock: ReturnType<typeof vi.fn>;
 let sendBeacon: ReturnType<typeof vi.fn>;
@@ -86,7 +94,88 @@ describe('ask: tour', () => {
   });
 });
 
+describe('ask: overlapping runs', () => {
+  const stubMotion = () =>
+    vi.stubGlobal('matchMedia', (q: string) => ({
+      matches: false,
+      media: q,
+      addEventListener() {},
+      removeEventListener() {},
+    }));
+  const openIds = () => useOS.getState().windows.map((w) => w.id);
+
+  it('tour pressed during a question: a fallback answer leaves the tour running and interruptible', async () => {
+    stubMotion();
+    const res = deferred();
+    fetchMock.mockReturnValueOnce(res.promise);
+    const asking = ask('rust vs go?');
+    expect(useAgent.getState().status).toBe('thinking');
+    const tour = runAgentPlan(TOUR);
+    res.resolve(json({ source: 'fallback', reason: 'daily_cap', text: FALLBACK_TEXT }));
+    await asking;
+    expect(useAgent.getState().status).toBe('acting');
+    expect(useAgent.getState().fallback).toBe(false);
+    expect(useAgent.getState().reply).not.toBe(FALLBACK_TEXT);
+    expect(useAgent.getState().controller).toBeDefined();
+    await vi.waitFor(() => expect(openIds()).toContain('me'));
+    useAgent.getState().abort();
+    expect(await tour).toBe('interrupted');
+    await new Promise((r) => setTimeout(r, 900));
+    expect(openIds()).not.toContain('consult');
+    expect(useAgent.getState().status).toBe('idle');
+  });
+
+  it('tour pressed during a question: a model answer does not abort the tour', async () => {
+    stubMotion();
+    const res = deferred();
+    fetchMock.mockReturnValueOnce(res.promise);
+    const asking = ask('rust vs go?');
+    const tour = runAgentPlan(TOUR);
+    res.resolve(
+      json({ source: 'gemini', text: 'Rust.', actions: [{ type: 'open_app', app: 'resume' }] }),
+    );
+    await asking;
+    expect(useAgent.getState().status).toBe('acting');
+    expect(useAgent.getState().reply).not.toBe('Rust.');
+    useAgent.getState().abort();
+    expect(await tour).toBe('interrupted');
+    expect(openIds()).not.toContain('resume');
+  });
+
+  it('a question asked during the tour supersedes it', async () => {
+    stubMotion();
+    const tour = runAgentPlan(TOUR);
+    await vi.waitFor(() => expect(openIds()).toContain('me'));
+    fetchMock.mockResolvedValueOnce(
+      json({ source: 'fallback', reason: 'daily_cap', text: FALLBACK_TEXT }),
+    );
+    await ask('rust vs go?');
+    expect(await tour).toBe('interrupted');
+    expect(useAgent.getState().reply).toBe(FALLBACK_TEXT);
+    expect(useAgent.getState().fallback).toBe(true);
+    expect(useAgent.getState().status).toBe('idle');
+    await new Promise((r) => setTimeout(r, 900));
+    expect(openIds()).not.toContain('consult');
+  });
+});
+
 describe('ask', () => {
+  it('keeps the understood line in agent.log for a scripted intent', async () => {
+    await ask('who are you');
+    expect(useAgent.getState().log[0]).toBe('✓ understood: who');
+  });
+
+  it('clears the previous reply while thinking', async () => {
+    useAgent.setState({ reply: 'stale answer' });
+    const res = deferred();
+    fetchMock.mockReturnValueOnce(res.promise);
+    const asking = ask('rust vs go?');
+    expect(useAgent.getState().reply).toBe('');
+    res.resolve(json({ source: 'gemini', text: 'fresh', actions: [] }));
+    await asking;
+    expect(useAgent.getState().reply).toBe('fresh');
+  });
+
   it('ignores blank input', async () => {
     await ask('   ');
     expect(fetchMock).not.toHaveBeenCalled();
