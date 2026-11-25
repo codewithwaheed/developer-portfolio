@@ -8,7 +8,9 @@ export default async function Home() {
   return (
     <>
       <noscript>
-        <style>{'.agentos-root{display:none}'}</style>
+        <style>
+          {'.agentos-root{display:none}html,body{overflow:auto!important;height:auto!important}'}
+        </style>
       </noscript>
       <AgentOS content={content} />
       <HideWhenHydrated>

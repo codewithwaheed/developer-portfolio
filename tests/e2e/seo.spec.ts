@@ -9,6 +9,21 @@ test.describe('without JavaScript', () => {
     await expect(page.getByText('10Pearls').first()).toBeVisible();
   });
 
+  test('home scrolls and the OS overlay is gone', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 600 });
+    await page.goto('/');
+    const display = await page.evaluate(
+      () => getComputedStyle(document.querySelector('.agentos-root')!).display,
+    );
+    expect(display).toBe('none');
+    expect(
+      await page.evaluate(() => document.scrollingElement!.scrollHeight > window.innerHeight),
+    ).toBe(true);
+    await page.evaluate(() => window.scrollTo(0, 99999));
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    await expect(page.getByRole('heading', { name: 'Contact' })).toBeInViewport();
+  });
+
   test('classic page links to booking', async ({ page }) => {
     await page.goto('/classic');
     await expect(page.getByRole('link', { name: /book/i }).first()).toBeVisible();

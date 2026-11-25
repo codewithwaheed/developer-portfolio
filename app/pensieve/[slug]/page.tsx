@@ -18,6 +18,11 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     title: post.title,
     description: post.description,
     alternates: { canonical: `/pensieve/${post.slug}` },
+    openGraph: {
+      title: post.title,
+      description: post.description,
+      url: `/pensieve/${post.slug}`,
+    },
   };
 }
 
