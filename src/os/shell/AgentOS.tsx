@@ -24,6 +24,7 @@ import { Boot } from './Boot';
 import { Lock } from './Lock';
 import { initialPhase, type Phase } from './bootFlow';
 import { safeStorage } from '@/lib/safeStorage';
+import { play, unlockAudio } from '@/sound/sound';
 
 // Apps not yet built (agentlog, Task 9) fall back to the placeholder body.
 function renderApp(id: AppId, content: PortfolioContent) {
@@ -83,11 +84,25 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
       }),
     );
 
-    return () => window.removeEventListener('resize', sync);
+    // Browsers only allow audio after a gesture: unlock on the first one.
+    const unlock = () => {
+      unlockAudio();
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', unlock);
+
+    return () => {
+      window.removeEventListener('resize', sync);
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
   }, []);
 
   const onBootDone = useCallback(() => setPhase('lock'), []);
   const onWake = useCallback(() => {
+    play('wake');
     setPhase('desktop');
     useOS.getState().openApp('me');
   }, []);

@@ -4,6 +4,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { animate, motion, useDragControls, useMotionValue, useReducedMotion } from 'motion/react';
 import { IconMinus, IconX } from '@tabler/icons-react';
 import { useOS } from '../store';
+import { play } from '@/sound/sound';
 import { appMeta, type AppId } from '../apps/registry';
 import { AppGlyph } from '../apps/icons';
 
@@ -45,6 +46,10 @@ export function Window({ id, children }: { id: AppId; children: ReactNode }) {
       ay.stop();
     };
   }, [wx, wy, reduce, x, y]);
+
+  useEffect(() => {
+    play(closing ? 'close' : 'open');
+  }, [closing]);
 
   // Move keyboard focus into the window when it becomes the focused one.
   useEffect(() => {
@@ -134,7 +139,10 @@ export function Window({ id, children }: { id: AppId; children: ReactNode }) {
               aria-label={`Minimize ${meta.title}`}
               className="win-control"
               data-kind="minimize"
-              onClick={() => minimizeApp(id)}
+              onClick={() => {
+                play('click');
+                minimizeApp(id);
+              }}
             >
               <IconMinus size={13} stroke={2.2} />
             </button>

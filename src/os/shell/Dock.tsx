@@ -9,6 +9,7 @@ import {
   useTransform,
   type MotionValue,
 } from 'motion/react';
+import { play } from '@/sound/sound';
 import { useOS } from '../store';
 import { APP_IDS, appMeta, type AppId } from '../apps/registry';
 import { AppGlyph } from '../apps/icons';
@@ -73,6 +74,7 @@ function DockItem({
   const size = useSpring(target, { mass: 0.12, stiffness: 190, damping: 13 });
 
   const onClick = () => {
+    play('dock');
     const s = useOS.getState();
     const win = s.windows.find((w) => w.id === id);
     if (win && !win.minimized && s.focused === id) s.minimizeApp(id);

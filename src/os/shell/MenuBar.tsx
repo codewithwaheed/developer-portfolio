@@ -1,15 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { IconMoon, IconSun, IconVolume, IconVolumeOff } from '@tabler/icons-react';
 import { siteConfig } from '@/config/site';
-import { safeStorage } from '@/lib/safeStorage';
+import { isMuted, setMuted, subscribeMuted } from '@/sound/sound';
 import { useOS } from '../store';
 import { useTheme } from '../theme';
 import { formatClock } from './clock';
 
-const MUTED_KEY = 'agentos.muted';
 const CLOCK_TICK_MS = 30_000;
 
 type MenuItem =
@@ -24,14 +23,13 @@ interface Props {
 
 export function MenuBar({ agentStatus = 'idle', onRestart = () => {} }: Props) {
   const { theme, toggle } = useTheme();
-  const [muted, setMuted] = useState(false);
+  const muted = useSyncExternalStore(subscribeMuted, isMuted, () => true);
   const [now, setNow] = useState<Date | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setMuted(safeStorage.get(MUTED_KEY, false));
     setNow(new Date());
     const t = setInterval(() => setNow(new Date()), CLOCK_TICK_MS);
     return () => clearInterval(t);
@@ -59,11 +57,7 @@ export function MenuBar({ agentStatus = 'idle', onRestart = () => {} }: Props) {
     };
   }, [openMenu, aboutOpen]);
 
-  const toggleMute = () => {
-    const next = !muted;
-    setMuted(next);
-    safeStorage.set(MUTED_KEY, next);
-  };
+  const toggleMute = () => setMuted(!muted);
 
   const os = useOS.getState;
   const menus: { id: string; label: ReactNode; name: string; items: MenuItem[] }[] = [
