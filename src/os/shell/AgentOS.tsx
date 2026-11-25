@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, MotionConfig } from 'motion/react';
 import type { PortfolioContent } from '@/content/types';
 import { useOS } from '../store';
 import { isAppId, type AppId } from '../apps/registry';
@@ -34,18 +34,21 @@ export function AgentOS({ content }: { content: PortfolioContent }) {
   }, []);
 
   return (
-    <div className="fixed inset-0 overflow-hidden">
-      <Wallpaper />
-      <DesktopIcons />
-      <AnimatePresence>
-        {windows.map((w) => (
-          <Window key={w.id} id={w.id}>
-            {renderApp(w.id, content)}
-          </Window>
-        ))}
-      </AnimatePresence>
-      <MenuBar />
-      <Dock />
-    </div>
+    // reducedMotion="user": every Motion animation in the shell honours the OS setting.
+    <MotionConfig reducedMotion="user">
+      <div className="fixed inset-0 overflow-hidden">
+        <Wallpaper />
+        <DesktopIcons />
+        <AnimatePresence>
+          {windows.map((w) => (
+            <Window key={w.id} id={w.id}>
+              {renderApp(w.id, content)}
+            </Window>
+          ))}
+        </AnimatePresence>
+        <MenuBar />
+        <Dock />
+      </div>
+    </MotionConfig>
   );
 }

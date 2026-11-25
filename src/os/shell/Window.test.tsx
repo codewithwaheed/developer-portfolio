@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { act } from 'react';
+import { AnimatePresence } from 'motion/react';
 import { useOS, resetOS } from '../store';
 import { Window } from './Window';
 
@@ -36,5 +37,41 @@ describe('<Window>', () => {
     render(<Window id="me">hi</Window>);
     await user.click(screen.getByRole('button', { name: 'Close me.md' }));
     expect(state().windows).toHaveLength(0);
+  });
+
+  it('stops catching clicks once minimised', async () => {
+    const user = userEvent.setup();
+    act(() => state().openApp('me'));
+    const { container } = render(<Window id="me">hi</Window>);
+    const wrapper = container.querySelector('[data-window="me"]')!.parentElement!;
+    expect(wrapper).not.toHaveStyle({ pointerEvents: 'none' });
+    await user.click(screen.getByRole('button', { name: 'Minimize me.md' }));
+    expect(wrapper).toHaveStyle({ pointerEvents: 'none' });
+  });
+
+  it('keeps rendering while its close animation plays, then unmounts', async () => {
+    function Desktop() {
+      const windows = useOS((s) => s.windows);
+      return (
+        <AnimatePresence>
+          {windows.map((w) => (
+            <Window key={w.id} id={w.id}>
+              hi
+            </Window>
+          ))}
+        </AnimatePresence>
+      );
+    }
+    act(() => state().openApp('me'));
+    const { container } = render(<Desktop />);
+    const found = () => container.querySelector('[data-window="me"]');
+    expect(found()).not.toBeNull();
+
+    act(() => state().closeApp('me'));
+    // Still on screen (and no longer interactive) while exiting.
+    expect(found()).not.toBeNull();
+    expect(found()).toHaveTextContent('hi');
+    expect(found()!.parentElement).toHaveStyle({ pointerEvents: 'none' });
+    await waitFor(() => expect(found()).toBeNull());
   });
 });

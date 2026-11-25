@@ -211,7 +211,7 @@ export function MenuBar({ agentStatus = 'idle', onRestart = () => {} }: Props) {
         >
           <span
             aria-hidden
-            className={`size-1.5 rounded-full ${agentStatus === 'thinking' ? 'animate-pulse' : ''}`}
+            className={`size-1.5 rounded-full ${agentStatus === 'thinking' ? 'motion-safe:animate-pulse' : ''}`}
             style={{ background: agentStatus === 'thinking' ? 'var(--think)' : 'var(--accent)' }}
           />
           agent {agentStatus}

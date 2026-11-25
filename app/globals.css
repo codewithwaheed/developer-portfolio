@@ -286,4 +286,10 @@ body {
   .wallpaper[data-thinking='true'] .wallpaper-shimmer {
     animation: none;
   }
+
+  .wallpaper,
+  .wallpaper-shimmer,
+  .win-control {
+    transition: none;
+  }
 }

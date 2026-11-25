@@ -12,7 +12,13 @@ const SETTLE = { type: 'spring', stiffness: 300, damping: 30 } as const;
 const Z_BASE = 10;
 
 export function Window({ id, children }: { id: AppId; children: ReactNode }) {
-  const win = useOS((s) => s.windows.find((w) => w.id === id));
+  const live = useOS((s) => s.windows.find((w) => w.id === id));
+  // Keep the last known state so AnimatePresence can play the exit animation
+  // after the window has left the store.
+  const last = useRef(live);
+  if (live) last.current = live;
+  const win = live ?? last.current;
+  const closing = !live;
   const focused = useOS((s) => s.focused === id);
   const viewport = useOS((s) => s.viewport);
   const { focusApp, closeApp, minimizeApp, moveWindow } = useOS.getState();
@@ -69,15 +75,23 @@ export function Window({ id, children }: { id: AppId; children: ReactNode }) {
       dragListener={false}
       dragMomentum={false}
       onDragEnd={onDragEnd}
-      style={{ x, y, zIndex: Z_BASE + win.z, width, height }}
+      style={{
+        x,
+        y,
+        zIndex: Z_BASE + win.z,
+        width,
+        height,
+        // A minimised or closing window must not block clicks underneath.
+        pointerEvents: win.minimized || closing ? 'none' : undefined,
+      }}
       className="absolute top-0 left-0"
     >
       <motion.div
         ref={ref}
         role="dialog"
         aria-label={meta.title}
-        aria-hidden={win.minimized || undefined}
-        inert={win.minimized}
+        aria-hidden={win.minimized || closing || undefined}
+        inert={win.minimized || closing}
         tabIndex={-1}
         data-window={id}
         data-focused={focused}
@@ -98,7 +112,7 @@ export function Window({ id, children }: { id: AppId; children: ReactNode }) {
         transition={reduce ? { duration: 0 } : SPRING}
         className="glass flex h-full w-full flex-col overflow-hidden rounded-[18px] outline-none"
         style={{
-          pointerEvents: win.minimized ? 'none' : 'auto',
+          pointerEvents: win.minimized || closing ? 'none' : 'auto',
           boxShadow: focused ? 'var(--glass-shadow-focus)' : undefined,
         }}
       >
