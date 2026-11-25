@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useMemo, useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import type { PortfolioContent } from '@/content/types';
 import { useOS } from '../store';
@@ -77,6 +77,10 @@ export function AgentOS({
   /** A deep link from the route itself (e.g. /pensieve/<slug>); wins over the query string. */
   initialDeepLink?: DeepLink;
 }) {
+  const projectTitles = useMemo(
+    () => Object.fromEntries(content.projects.map((p) => [p.id, p.title.split(/\s[-|]\s/)[0]])),
+    [content.projects],
+  );
   const windows = useOS((s) => s.windows);
   const agentStatus = useAgent((s) => s.status);
   const fallback = useAgent((s) => s.fallback);
@@ -195,6 +199,7 @@ export function AgentOS({
             onTour={onTour}
             suggestions={fallback ? FALLBACK_SUGGESTIONS : memoryChips}
             shortcutEnabled={!covered}
+            projectTitles={projectTitles}
           />
         </div>
         <GhostCursor mode={isMobile ? 'pulse' : 'pointer'} />
