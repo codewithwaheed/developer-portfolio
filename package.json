@@ -1,75 +1,73 @@
 {
-  "name": "v1",
-  "description": "Personal Portfolio",
-  "version": "1.0.0",
+  "name": "agentos-portfolio",
+  "version": "2.0.0",
+  "private": true,
+  "description": "AgentOS: Waheed Ahmed's portfolio as a browser desktop OS",
   "author": "Waheed Ahmed",
-  "keywords": [
-    "gatsby"
-  ],
   "license": "MIT",
-  "browserslist": "> 0.25%, not dead",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "build": "gatsby build",
-    "develop": "gatsby develop",
-    "format": "prettier --write \"**/*.{js,jsx,json,md}\"",
-    "start": "npm run develop",
-    "serve": "gatsby serve",
-    "clean": "gatsby clean",
-    "prepare": "husky install",
-    "lint-staged": "lint-staged"
+    "dev": "next dev",
+    "sync-content-assets": "tsx scripts/sync-content-assets.ts",
+    "build": "npm run sync-content-assets && next build",
+    "start": "next start",
+    "test": "vitest run --passWithNoTests",
+    "e2e": "playwright test",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,css}\"",
+    "prepare": "husky"
   },
   "lint-staged": {
-    "*.{js,css,json,md}": [
+    "*.{ts,tsx}": [
+      "eslint --fix",
       "prettier --write"
     ],
-    "*.js": [
-      "eslint --fix"
+    "*.{md,json}": [
+      "prettier --write"
     ]
   },
   "dependencies": {
-    "animejs": "^3.1.0",
-    "babel-plugin-styled-components": "^1.12.0",
-    "gatsby": "^3.4.1",
-    "gatsby-plugin-google-analytics": "^3.4.0",
-    "gatsby-plugin-image": "^1.4.0",
-    "gatsby-plugin-manifest": "^3.4.0",
-    "gatsby-plugin-netlify": "^3.4.0",
-    "gatsby-plugin-offline": "^4.4.0",
-    "gatsby-plugin-react-helmet": "^4.4.0",
-    "gatsby-plugin-robots-txt": "^1.5.6",
-    "gatsby-plugin-sharp": "^3.4.1",
-    "gatsby-plugin-sitemap": "^4.0.0",
-    "gatsby-plugin-styled-components": "^4.4.0",
-    "gatsby-remark-external-links": "0.0.4",
-    "gatsby-remark-images": "^5.1.0",
-    "gatsby-remark-prismjs": "^5.1.0",
-    "gatsby-source-filesystem": "^3.4.0",
-    "gatsby-transformer-remark": "^4.1.0",
-    "gatsby-transformer-sharp": "^3.4.0",
-    "lodash": "^4.17.19",
-    "prismjs": "^1.27.0",
-    "prop-types": "^15.7.2",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
-    "react-helmet": "^6.1.0",
-    "react-transition-group": "^4.3.0",
-    "scrollreveal": "^4.0.5",
-    "styled-components": "^5.3.0"
+    "@ai-sdk/google": "^4.0.126",
+    "@supabase/supabase-js": "^2.119.2",
+    "ai": "^7.0.181",
+    "geist": "^1.9.2",
+    "gray-matter": "^4.0.3",
+    "motion": "^14.14.0",
+    "next": "^15.5.29",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "rehype-pretty-code": "^0.14.6",
+    "rehype-stringify": "^10.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "server-only": "^0.0.1",
+    "shiki": "^4.6.0",
+    "unified": "^11.0.5",
+    "zod": "^4.6.7",
+    "zustand": "^5.1.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.14.0",
-    "@babel/eslint-parser": "^7.13.14",
-    "@babel/preset-react": "^7.13.13",
-    "@upstatement/eslint-config": "^1.0.0",
-    "@upstatement/prettier-config": "^1.0.0",
-    "babel-preset-gatsby": "^1.4.0",
-    "eslint": "^7.25.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-jsx-a11y": "^6.4.1",
-    "eslint-plugin-react": "^7.23.2",
-    "gatsby-remark-code-titles": "^1.1.0",
-    "husky": "^6.0.0",
-    "lint-staged": "^10.1.2",
-    "prettier": "^2.2.1"
+    "@eslint/eslintrc": "^3.3.7",
+    "@playwright/test": "^1.65.1",
+    "@tailwindcss/postcss": "^4.3.5",
+    "@testing-library/jest-dom": "^8.0.0",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.13",
+    "@types/node": "^22.20.7",
+    "@types/react": "^19.3.3",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.29",
+    "husky": "^9.1.7",
+    "jsdom": "^31.0.1",
+    "lint-staged": "^17.6.2",
+    "prettier": "^3.10.1",
+    "tailwindcss": "^4.3.5",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.2"
   }
 }

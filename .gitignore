@@ -1,11 +1,21 @@
-# Project dependencies
-.cache
+# Dependencies
 node_modules
-yarn-error.log
-package-lock.json
 
-# Build directory
-/public
+# Build output
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+public/content/
+
+# Env
+.env*.local
+.env
+
+# Tests
+test-results/
+playwright-report/
+
 .DS_Store
-
 .vscode/
+.superpowers/
