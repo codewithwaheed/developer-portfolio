@@ -59,6 +59,14 @@ function topVisible(windows: WindowState[]): AppId | null {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 
+function clampPos(id: AppId, x: number, y: number, viewport: { w: number; h: number }) {
+  const width = appMeta[id].defaultSize.w;
+  return {
+    x: clamp(x, MIN_VISIBLE_X - width, viewport.w - MIN_VISIBLE_X),
+    y: clamp(y, MENU_BAR, viewport.h - MIN_VISIBLE_Y),
+  };
+}
+
 export const useOS = create<OSState & OSActions>()((set) => ({
   ...initialState(),
 
@@ -112,15 +120,20 @@ export const useOS = create<OSState & OSActions>()((set) => ({
 
   moveWindow: (id, x, y) =>
     set((s) => {
-      const width = appMeta[id].defaultSize.w;
-      const cx = clamp(x, MIN_VISIBLE_X - width, s.viewport.w - MIN_VISIBLE_X);
-      const cy = clamp(y, MENU_BAR, s.viewport.h - MIN_VISIBLE_Y);
+      const pos = clampPos(id, x, y, s.viewport);
       return {
-        windows: s.windows.map((w) => (w.id === id ? { ...w, x: cx, y: cy } : w)),
+        windows: s.windows.map((w) => (w.id === id ? { ...w, ...pos } : w)),
       };
     }),
 
-  setViewport: (w, h) => set({ viewport: { w, h } }),
+  setViewport: (w, h) =>
+    set((s) => {
+      const viewport = { w, h };
+      return {
+        viewport,
+        windows: s.windows.map((win) => ({ ...win, ...clampPos(win.id, win.x, win.y, viewport) })),
+      };
+    }),
   setProjectFilter: (f) => set({ projectFilter: f }),
   openProject: (id) => set({ openProjectId: id }),
   openPost: (slug) => set({ openPostSlug: slug }),

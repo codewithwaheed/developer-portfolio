@@ -31,6 +31,7 @@
   "dependencies": {
     "@ai-sdk/google": "^4.0.126",
     "@supabase/supabase-js": "^2.119.2",
+    "@tabler/icons-react": "^3.53.0",
     "ai": "^7.0.181",
     "geist": "^1.9.2",
     "gray-matter": "^4.0.3",

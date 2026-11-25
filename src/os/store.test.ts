@@ -84,3 +84,15 @@ describe('window manager store', () => {
     expect(state().viewport).toEqual({ w: 1280, h: 800 });
   });
 });
+
+describe('setViewport', () => {
+  it('re-clamps existing windows into the new viewport', () => {
+    const { openApp, moveWindow, setViewport } = state();
+    openApp('me');
+    moveWindow('me', 1100, 700);
+    expect(win('me')).toMatchObject({ x: 1100, y: 700 });
+    setViewport(800, 600);
+    expect(state().viewport).toEqual({ w: 800, h: 600 });
+    expect(win('me')).toMatchObject({ x: 800 - 120, y: 600 - 40 });
+  });
+});
