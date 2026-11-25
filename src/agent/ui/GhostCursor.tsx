@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   animate,
   motion,
   useAnimationControls,
   useMotionValue,
+  useReducedMotion,
   type MotionValue,
 } from 'motion/react';
 import { play } from '@/sound/sound';
@@ -57,16 +58,18 @@ async function findTarget(selector: string): Promise<Element | null> {
 
 /** The agent's violet pointer. Glides between targets on springs; hidden while idle. */
 export function GhostCursor() {
-  const visible = useAgent((s) => s.status === 'acting');
+  const acting = useAgent((s) => s.status === 'acting');
+  const plan = useAgent((s) => s.controller);
+  const reduce = useReducedMotion() ?? false;
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const press = useAnimationControls();
   const ripple = useAnimationControls();
-  // Each plan enters from the prompt bar; reset once the cursor hides.
-  const placed = useRef(false);
-  useEffect(() => {
-    if (!visible) placed.current = false;
-  }, [visible]);
+  // The plan (controller) the cursor was last placed for. Each plan starts hidden and
+  // enters from the prompt bar on its first target, so it never shows at a stale spot.
+  const placedFor = useRef<AbortController | undefined>(undefined);
+  const [shownFor, setShownFor] = useState<AbortController | undefined>(undefined);
+  const visible = acting && !reduce && plan !== undefined && shownFor === plan;
 
   useEffect(() => {
     impl = {
@@ -76,11 +79,13 @@ export function GhostCursor() {
         const r = el.getBoundingClientRect();
         const tx = r.left + r.width / 2;
         const ty = r.top + r.height / 2;
-        if (!placed.current) {
+        const current = useAgent.getState().controller;
+        if (placedFor.current !== current) {
           // Enter from the prompt bar, bottom centre.
           x.jump(window.innerWidth / 2);
           y.jump(window.innerHeight - 120);
-          placed.current = true;
+          placedFor.current = current;
+          setShownFor(current);
         }
         if (prefersReducedMotion()) {
           x.jump(tx);

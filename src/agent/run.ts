@@ -34,7 +34,9 @@ export async function runAgentPlan(
 ): Promise<'done' | 'interrupted'> {
   const agent = useAgent.getState();
   const current = agent.controller;
-  const signal = current && !current.signal.aborted ? current.signal : agent.start();
+  // Reuse only a fresh start() (thinking, no plan yet); otherwise start() aborts any running plan.
+  const reuse = agent.status === 'thinking' && current && !current.signal.aborted;
+  const signal = reuse ? current.signal : agent.start();
   const controller = useAgent.getState().controller;
 
   agent.clearLog();
