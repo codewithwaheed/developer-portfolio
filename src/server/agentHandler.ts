@@ -21,6 +21,14 @@ export interface HandlerDeps {
 }
 
 const MAX_LEN = 500;
+/** Longer answers are served but never cached: a shared cache must not amplify odd output. */
+export const MAX_CACHED_TEXT = 600;
+
+/** Only cache answers that say something, within the length limit. */
+function cacheable(text: string, actions: AgentAction[]): boolean {
+  if (text.length > MAX_CACHED_TEXT) return false;
+  return text.trim() !== '' || actions.some((a) => a.type === 'say');
+}
 
 const fallback = (reason: 'visitor_cap' | 'daily_cap' | 'quota' | 'error'): AgentResponse => ({
   source: 'fallback',
@@ -90,7 +98,7 @@ export async function handleAgentRequest(
         ),
       ],
     });
-    await store.setCached(key, { text, actions }).catch(() => {});
+    if (cacheable(text, actions)) await store.setCached(key, { text, actions }).catch(() => {});
     await log('gemini');
     return { status: 200, body: { source: 'gemini', text, actions, remaining: visitor.remaining } };
   } catch (e) {

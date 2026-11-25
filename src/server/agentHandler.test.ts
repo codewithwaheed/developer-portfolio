@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { handleAgentRequest } from './agentHandler';
+import { handleAgentRequest, MAX_CACHED_TEXT } from './agentHandler';
 import { createMemoryStore } from './memoryStore';
 import { FALLBACK_TEXT } from '@/agent/actions';
 import type { PortfolioContent } from '@/content/types';
@@ -136,6 +136,29 @@ describe('handleAgentRequest', () => {
       status: 200,
       body: { source: 'fallback', reason: 'error' },
     });
+  });
+
+  it('does not cache an empty answer with no say action', async () => {
+    const { store, handle, ask } = setup();
+    const setCached = vi.spyOn(store, 'setCached');
+    ask.mockResolvedValueOnce({ text: '', rawToolCalls: [{ type: 'open_app', app: 'me' }] });
+    expect((await handle({ question: 'empty one' })).body).toMatchObject({ source: 'gemini' });
+    expect(setCached).not.toHaveBeenCalled();
+    ask.mockResolvedValueOnce({ text: '  ', rawToolCalls: [{ type: 'say', text: 'Hi there.' }] });
+    await handle({ question: 'say one' });
+    expect(setCached).toHaveBeenCalledTimes(1);
+    expect((await handle({ question: 'empty one' })).body).toMatchObject({ source: 'gemini' });
+  });
+
+  it(`does not cache answers longer than ${MAX_CACHED_TEXT} chars`, async () => {
+    const { store, handle, ask } = setup();
+    const setCached = vi.spyOn(store, 'setCached');
+    ask.mockResolvedValueOnce({ text: 'x'.repeat(MAX_CACHED_TEXT + 1), rawToolCalls: [] });
+    expect((await handle({ question: 'long one' })).body).toMatchObject({ source: 'gemini' });
+    expect(setCached).not.toHaveBeenCalled();
+    ask.mockResolvedValueOnce({ text: 'x'.repeat(MAX_CACHED_TEXT), rawToolCalls: [] });
+    await handle({ question: 'just fits' });
+    expect(setCached).toHaveBeenCalledTimes(1);
   });
 
   it('swallows logging failures', async () => {
