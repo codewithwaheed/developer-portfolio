@@ -33,6 +33,7 @@ export interface OSActions {
   setViewport(w: number, h: number): void;
   setProjectFilter(f: ProjectFilter): void;
   openProject(id: string): void;
+  closeProject(): void;
   openPost(slug: string): void;
 }
 
@@ -136,6 +137,7 @@ export const useOS = create<OSState & OSActions>()((set) => ({
     }),
   setProjectFilter: (f) => set({ projectFilter: f }),
   openProject: (id) => set({ openProjectId: id }),
+  closeProject: () => set({ openProjectId: undefined }),
   openPost: (slug) => set({ openPostSlug: slug }),
 }));
 

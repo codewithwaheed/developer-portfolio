@@ -1,12 +1,14 @@
 'use client';
 
 import type { Project, ProjectTag } from '@/content/types';
+import { IconChevronLeft } from '@tabler/icons-react';
 import { useOS } from '../store';
+import { useIsMobile } from '../mobile/useIsMobile';
 import { filterProjects } from './projectsFilter';
 
 const TAGS: ProjectTag[] = ['ai', 'blockchain', 'fintech', 'web'];
 
-function Row({ p, selected }: { p: Project; selected: boolean }) {
+function Row({ p, selected, roomy = false }: { p: Project; selected: boolean; roomy?: boolean }) {
   const openProject = useOS((s) => s.openProject);
   return (
     <button
@@ -14,13 +16,24 @@ function Row({ p, selected }: { p: Project; selected: boolean }) {
       data-project-id={p.id}
       aria-current={selected || undefined}
       onClick={() => openProject(p.id)}
-      className={`w-full truncate rounded-md px-2.5 py-1.5 text-left text-sm ${
+      className={`w-full rounded-md text-left text-sm ${
+        roomy ? 'rounded-xl px-3.5 py-3' : 'truncate px-2.5 py-1.5'
+      } ${
         selected
           ? 'bg-[var(--accent-soft)] text-[var(--fg)]'
           : 'text-[var(--fg-muted)] hover:bg-[var(--hover)]'
       }`}
     >
-      {p.title}
+      {roomy ? (
+        <>
+          <span className="block truncate text-[15px] font-medium text-[var(--fg)]">{p.title}</span>
+          <span className="mt-0.5 block truncate text-xs text-[var(--fg-faint)]">
+            {[p.company, p.tech.slice(0, 3).join(' · ')].filter(Boolean).join(' — ')}
+          </span>
+        </>
+      ) : (
+        p.title
+      )}
     </button>
   );
 }
@@ -73,6 +86,7 @@ function Detail({ p }: { p: Project }) {
 }
 
 export function ProjectsApp({ projects }: { projects: Project[] }) {
+  const isMobile = useIsMobile();
   const filter = useOS((s) => s.projectFilter);
   const setProjectFilter = useOS((s) => s.setProjectFilter);
   const openId = useOS((s) => s.openProjectId);
@@ -82,10 +96,35 @@ export function ProjectsApp({ projects }: { projects: Project[] }) {
   const featured = shown.filter((p) => p.featured);
   const archive = shown.filter((p) => !p.featured);
   const selected = projects.find((p) => p.id === openId);
+  const closeProject = useOS((s) => s.closeProject);
+
+  // Phone: one pane at a time. The list fills the screen; a project opens full size
+  // with a Back button that returns to the list.
+  if (isMobile && selected) {
+    return (
+      <div className="flex h-full flex-col">
+        <button
+          type="button"
+          onClick={closeProject}
+          className="flex h-11 shrink-0 items-center gap-0.5 self-start px-3 text-[15px] font-medium text-[var(--accent)]"
+        >
+          <IconChevronLeft aria-hidden size={20} stroke={2.2} />
+          All projects
+        </button>
+        <div className="min-h-0 flex-1 overflow-auto">
+          <Detail p={selected} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full">
-      <div className="flex w-56 shrink-0 flex-col gap-3 overflow-auto border-r border-[var(--glass-edge)] p-3">
+      <div
+        className={`flex shrink-0 flex-col gap-3 overflow-auto p-3 ${
+          isMobile ? 'w-full' : 'w-56 border-r border-[var(--glass-edge)]'
+        }`}
+      >
         <div className="flex flex-wrap gap-1.5">
           {TAGS.map((t) => {
             const on = filter.tag === t;
@@ -95,7 +134,7 @@ export function ProjectsApp({ projects }: { projects: Project[] }) {
                 type="button"
                 aria-pressed={on}
                 onClick={() => setProjectFilter({ ...filter, tag: on ? undefined : t })}
-                className={`rounded-full px-2.5 py-1 text-xs ${
+                className={`rounded-full px-2.5 py-1 text-xs ${isMobile ? 'px-3.5 py-1.5 text-[13px]' : ''} ${
                   on
                     ? 'bg-[var(--accent)] text-white'
                     : 'bg-[var(--control)] text-[var(--fg-muted)] hover:bg-[var(--hover)]'
@@ -121,7 +160,7 @@ export function ProjectsApp({ projects }: { projects: Project[] }) {
         </select>
         <div className="flex flex-col gap-0.5">
           {featured.map((p) => (
-            <Row key={p.id} p={p} selected={p.id === openId} />
+            <Row key={p.id} p={p} roomy={isMobile} selected={p.id === openId} />
           ))}
         </div>
         {archive.length > 0 && (
@@ -129,20 +168,22 @@ export function ProjectsApp({ projects }: { projects: Project[] }) {
             <p className="px-2.5 pb-1 font-mono text-[11px] text-[var(--fg-faint)]">archive/</p>
             <div className="flex flex-col gap-0.5">
               {archive.map((p) => (
-                <Row key={p.id} p={p} selected={p.id === openId} />
+                <Row key={p.id} p={p} roomy={isMobile} selected={p.id === openId} />
               ))}
             </div>
           </div>
         )}
         {shown.length === 0 && <p className="text-xs text-[var(--fg-faint)]">No matches.</p>}
       </div>
-      <div className="min-w-0 flex-1 overflow-auto">
-        {selected ? (
-          <Detail p={selected} />
-        ) : (
-          <p className="p-5 text-sm text-[var(--fg-faint)]">Select a project.</p>
-        )}
-      </div>
+      {!isMobile && (
+        <div className="min-w-0 flex-1 overflow-auto">
+          {selected ? (
+            <Detail p={selected} />
+          ) : (
+            <p className="p-5 text-sm text-[var(--fg-faint)]">Select a project.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   IconAlertTriangle,
@@ -13,6 +13,7 @@ import {
 import { useOS } from '@/os/store';
 import type { FitReport } from '../actions';
 import { useAgent, type ChatMessage } from '../agentStore';
+import { Markdown } from './Markdown';
 
 const STREAM_CPS = 90; // characters per second for the newest reply
 const SPRING = { type: 'spring', stiffness: 420, damping: 32 } as const;
@@ -39,51 +40,7 @@ function useStreamed(text: string, live: boolean): string {
   return shown;
 }
 
-/** **bold** and *italic* inside a line, as React nodes (no HTML is ever injected). */
-function inline(line: string): ReactNode[] {
-  return line.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/g).map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
-      return (
-        <strong key={i} className="font-semibold text-[var(--fg)]">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
-      return <em key={i}>{part.slice(1, -1)}</em>;
-    }
-    return <Fragment key={i}>{part}</Fragment>;
-  });
-}
-
-/** Minimal markdown: paragraphs, "- " / "* " bullet lists, **bold** and *italic*. */
-export function Markdown({ text }: { text: string }) {
-  const blocks: ReactNode[] = [];
-  let list: string[] = [];
-  const flush = () => {
-    if (!list.length) return;
-    blocks.push(
-      <ul key={`l${blocks.length}`} className="my-1 list-disc space-y-0.5 pl-4">
-        {list.map((li, i) => (
-          <li key={i}>{inline(li)}</li>
-        ))}
-      </ul>,
-    );
-    list = [];
-  };
-  for (const raw of text.split('\n')) {
-    const line = raw.trim();
-    const bullet = /^[-*•]\s+(.*)$/.exec(line);
-    if (bullet) {
-      list.push(bullet[1]);
-      continue;
-    }
-    flush();
-    if (line) blocks.push(<p key={`p${blocks.length}`}>{inline(line)}</p>);
-  }
-  flush();
-  return <div className="space-y-1.5">{blocks}</div>;
-}
+export { Markdown };
 
 const VERDICT: Record<FitReport['verdict'], { label: string; cls: string }> = {
   strong: {

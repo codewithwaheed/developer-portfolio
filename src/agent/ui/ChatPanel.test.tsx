@@ -37,3 +37,21 @@ describe('FitCard', () => {
     expect(screen.getByRole('button', { name: 'Book a call' })).toBeInTheDocument();
   });
 });
+
+describe('Markdown (rich)', () => {
+  it('renders headings, numbered lists, code and safe links only', () => {
+    const { container } = render(
+      <Markdown
+        text={
+          '## Title\n1. one\n2. two\n\nUse `npm run dev` and [site](https://a.dev) not [bad](javascript:alert(1))\n```\ncode here\n```'
+        }
+      />,
+    );
+    expect(container.querySelector('ol')?.querySelectorAll('li')).toHaveLength(2);
+    expect(container.querySelector('p code')).toHaveTextContent('npm run dev');
+    expect(container.querySelector('pre')).toHaveTextContent('code here');
+    const links = container.querySelectorAll('a');
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute('href', 'https://a.dev');
+  });
+});

@@ -61,7 +61,7 @@ describe('AgentBar', () => {
       useAgent.getState().setReply(reply);
     });
     const visibleText = () => {
-      const clone = container.querySelector('[data-agent-bar]')!.cloneNode(true) as HTMLElement;
+      const clone = container.cloneNode(true) as HTMLElement;
       clone.querySelectorAll('.sr-only').forEach((n) => n.remove());
       return clone.textContent!;
     };

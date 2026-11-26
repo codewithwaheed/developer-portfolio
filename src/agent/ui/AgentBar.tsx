@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'motion/react';
-import { IconSparkles, IconSteeringWheel } from '@tabler/icons-react';
+import {
+  IconArrowUp,
+  IconPlayerStopFilled,
+  IconSparkles,
+  IconSteeringWheel,
+} from '@tabler/icons-react';
 import { play } from '@/sound/sound';
 import { useAgent } from '../agentStore';
 import { ChatPanel } from './ChatPanel';
@@ -47,14 +52,42 @@ export function AgentBar({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
+  // The chat floats like a window: above the apps while the visitor is using it, beneath
+  // them once they click anywhere else, so it never traps the desktop.
+  const chatRef = useRef<HTMLDivElement>(null);
+  const [raised, setRaised] = useState(true);
+  const [barHeight, setBarHeight] = useState(56);
 
   // The chat (and the phone sheet) open themselves whenever the conversation grows.
   useEffect(() => {
     if (messageCount > 0) {
       setChatOpen(true);
       setExpanded(true);
+      setRaised(true);
     }
   }, [messageCount]);
+
+  // Desktop layering: a press inside the chat or prompt raises the chat; a press anywhere
+  // else (a window, the dock, the desktop) sends it behind the windows.
+  useEffect(() => {
+    if (variant !== 'bar') return;
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      setRaised(Boolean(chatRef.current?.contains(t) || barRef.current?.contains(t)));
+    };
+    window.addEventListener('pointerdown', onDown, true);
+    return () => window.removeEventListener('pointerdown', onDown, true);
+  }, [variant]);
+
+  // The chat sits directly above the prompt, however tall the prompt and chips grow.
+  useEffect(() => {
+    const el = barRef.current;
+    if (variant !== 'bar' || !el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setBarHeight(el.offsetHeight));
+    ro.observe(el);
+    setBarHeight(el.offsetHeight);
+    return () => ro.disconnect();
+  }, [variant]);
 
   // Grow the prompt with its content (pasted job descriptions), up to a few lines.
   useEffect(() => {
@@ -81,7 +114,8 @@ export function AgentBar({
   useEffect(() => {
     if (status !== 'acting') return;
     const interrupt = (e: Event) => {
-      if (barRef.current?.contains(e.target as Node)) return;
+      const t = e.target as Node;
+      if (barRef.current?.contains(t) || chatRef.current?.contains(t)) return;
       useAgent.getState().abort();
     };
     window.addEventListener('pointerdown', interrupt, true);
@@ -148,7 +182,7 @@ export function AgentBar({
   );
 
   const inputRow = (
-    <div className="glass pointer-events-auto flex min-h-12 w-full max-w-[560px] items-center gap-2 rounded-2xl py-1.5 pr-1.5 pl-3.5 focus-within:shadow-[var(--glass-shadow-focus),0_0_0_3px_var(--accent-soft)]">
+    <div className="glass pointer-events-auto flex min-h-12 min-w-0 flex-1 items-center gap-2 rounded-2xl py-1.5 pr-1.5 pl-3.5 focus-within:shadow-[var(--glass-shadow-focus),0_0_0_3px_var(--accent-soft)]">
       <IconSparkles
         aria-hidden
         size={17}
@@ -178,15 +212,35 @@ export function AgentBar({
       </kbd>
       <button
         type="button"
-        aria-label="Let the agent drive"
-        onClick={onTour}
-        className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3 text-[12.5px] font-medium text-white shadow-[0_4px_14px_rgba(110,75,255,0.35)] transition-[filter] hover:brightness-110"
+        aria-label="Send message"
+        disabled={!value.trim()}
+        onClick={() => submit(value)}
+        className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-white shadow-[0_4px_14px_rgba(110,75,255,0.35)] transition-[filter,opacity] hover:brightness-110 disabled:opacity-35 disabled:shadow-none"
       >
-        <IconSteeringWheel aria-hidden size={15} stroke={1.9} />
-        <span className="hidden sm:inline">Let the agent drive</span>
-        <span className="sm:hidden">Drive</span>
+        <IconArrowUp aria-hidden size={17} stroke={2.4} />
       </button>
     </div>
+  );
+
+  // Not part of the chat box: a different action (a hands-free tour, no typing), so it looks
+  // different and says what it does. While the agent is driving it becomes a Stop button.
+  const driving = status === 'acting';
+  const driveButton = (
+    <button
+      type="button"
+      aria-label={driving ? 'Stop the agent' : 'Let the agent drive'}
+      title={driving ? 'Stop the tour' : 'Watch the agent open each app and walk you through them'}
+      onClick={driving ? () => useAgent.getState().abort() : onTour}
+      className="glass pointer-events-auto flex h-12 shrink-0 items-center gap-1.5 rounded-2xl border border-[var(--accent)] px-3.5 text-[12.5px] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent-soft)]"
+    >
+      {driving ? (
+        <IconPlayerStopFilled aria-hidden size={14} />
+      ) : (
+        <IconSteeringWheel aria-hidden size={16} stroke={1.9} />
+      )}
+      <span className="hidden sm:inline">{driving ? 'Stop' : 'Auto-tour'}</span>
+      <span className="sm:hidden">{driving ? 'Stop' : 'Tour'}</span>
+    </button>
   );
 
   if (variant === 'sheet') {
@@ -202,22 +256,37 @@ export function AgentBar({
           </>
         }
       >
-        {inputRow}
+        <div className="flex w-full max-w-[640px] items-stretch gap-2">
+          {inputRow}
+          {driveButton}
+        </div>
       </AgentSheet>
     );
   }
 
   return (
-    <div
-      ref={barRef}
-      data-agent-bar
-      data-variant="bar"
-      className="pointer-events-none fixed inset-x-0 bottom-[92px] z-[1000] flex flex-col items-center gap-2 px-4"
-    >
-      {replyBubble}
-      {chips}
-      {inputRow}
-    </div>
+    <>
+      <div
+        ref={chatRef}
+        data-agent-chat
+        style={{ bottom: 92 + barHeight + 8, zIndex: raised ? 1000 : 5 }}
+        className="pointer-events-none fixed inset-x-0 flex justify-center px-4"
+      >
+        {replyBubble}
+      </div>
+      <div
+        ref={barRef}
+        data-agent-bar
+        data-variant="bar"
+        className="pointer-events-none fixed inset-x-0 bottom-[92px] z-[1000] flex flex-col items-center gap-2 px-4"
+      >
+        {chips}
+        <div className="flex w-full max-w-[680px] items-stretch gap-2">
+          {inputRow}
+          {driveButton}
+        </div>
+      </div>
+    </>
   );
 }
 
