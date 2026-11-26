@@ -101,4 +101,24 @@ describe('runPlan', () => {
     expect(deps.say).toHaveBeenCalledWith('hello');
     expect(deps.startTour).toHaveBeenCalledTimes(1);
   });
+
+  it('waits for a caption to be read before the next step when sayDwellMs is set', async () => {
+    vi.useFakeTimers();
+    try {
+      const dwell = vi.fn(() => 1000);
+      const run = runPlan(
+        [{ type: 'say', text: 'caption' }, open('me')],
+        { ...deps, reducedMotion: true, sayDwellMs: dwell },
+        ctrl.signal,
+      );
+      await vi.advanceTimersByTimeAsync(500);
+      expect(deps.os.openApp).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(600);
+      await run;
+      expect(dwell).toHaveBeenCalledWith('caption');
+      expect(deps.os.openApp).toHaveBeenCalledWith('me');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

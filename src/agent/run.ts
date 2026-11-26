@@ -73,6 +73,12 @@ export async function runAgentPlan(
   opts: { startTour?: () => void; signal?: AbortSignal; initialLog?: string[] } = {},
 ): Promise<'done' | 'interrupted'> {
   const agent = useAgent.getState();
+  // On a phone only the last app of a run of opens is ever visible, so skip the flicker.
+  if (isMobileViewport()) {
+    actions = actions.filter(
+      (a, i) => !(a.type === 'open_app' && actions[i + 1]?.type === 'open_app'),
+    );
+  }
   let signal: AbortSignal;
   if (opts.signal) {
     if (opts.signal.aborted || agent.controller?.signal !== opts.signal) return 'interrupted';
@@ -101,16 +107,33 @@ export async function runAgentPlan(
   // Phones are single-app: agent.log would cover the apps the agent opens.
   if (showLog) showAgentLog(slots.agentlog);
 
+  // Phones show one app at a time. Point at a home-screen icon only when we are on the home
+  // screen; with an app open, switch straight to the next one instead of bouncing home.
+  let skipClick = false;
   const moveCursorTo = async (selector: string) => {
-    if (mobile && selector.startsWith('[data-app-icon')) await goHome(reducedMotion);
+    if (mobile && selector.startsWith('[data-app-icon')) {
+      if (useOS.getState().windows.length > 0) {
+        skipClick = true;
+        return;
+      }
+      await goHome(reducedMotion);
+    }
     await cursor.moveTo(selector);
+  };
+  const click = async () => {
+    if (skipClick) {
+      skipClick = false;
+      return;
+    }
+    await cursor.click();
   };
   try {
     return await runPlan(
       actions,
       {
         moveCursorTo,
-        click: () => cursor.click(),
+        click,
+        sayDwellMs: mobile ? (text) => Math.min(6000, Math.max(2400, text.length * 45)) : undefined,
         os: {
           openApp: (id: AppId) => os.openApp(id, slots[id]),
           closeApp: os.closeApp,

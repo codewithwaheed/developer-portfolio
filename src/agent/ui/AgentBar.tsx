@@ -9,6 +9,7 @@ import {
   IconSteeringWheel,
 } from '@tabler/icons-react';
 import { play } from '@/sound/sound';
+import { useOS } from '@/os/store';
 import { useAgent } from '../agentStore';
 import { ChatPanel } from './ChatPanel';
 
@@ -49,6 +50,14 @@ export function AgentBar({
 }: Props) {
   const status = useAgent((s) => s.status);
   const messageCount = useAgent((s) => s.messages.length);
+  // The visible app on top, if any (phone sheet: it must not cover what the agent opens).
+  const topApp = useOS((s) => {
+    let best: { id: string; z: number } | null = null;
+    for (const w of s.windows) if (!w.minimized && (!best || w.z > best.z)) best = w;
+    return best?.id ?? null;
+  });
+  const [peek, setPeek] = useState(false);
+  const agentOpenedApp = useRef(false);
   const [value, setValue] = useState('');
   const barRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -64,13 +73,40 @@ export function AgentBar({
 
   // The chat (and the phone sheet) open themselves whenever the conversation grows.
   useEffect(() => {
-    if (messageCount > 0) {
-      setChatOpen(true);
-      setMinimized(false);
+    if (messageCount === 0) return;
+    setChatOpen(true);
+    setMinimized(false);
+    setRaised(true);
+    const last = useAgent.getState().messages.at(-1);
+    if (last?.role === 'user') agentOpenedApp.current = false;
+    // Phone: once the agent has put an app on screen, its words arrive as a short caption
+    // (tap to open the chat) instead of a sheet covering the app.
+    if (variant === 'sheet' && last?.role === 'agent' && agentOpenedApp.current) {
+      setPeek(true);
+    } else {
       setExpanded(true);
-      setRaised(true);
+      setPeek(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messageCount]);
+
+  // Phone: when the agent opens an app, tuck the chat away so the app can be seen and read.
+  useEffect(() => {
+    if (variant !== 'sheet' || !topApp || status === 'idle') return;
+    agentOpenedApp.current = true;
+    setExpanded(false);
+  }, [topApp, variant, status]);
+
+  // A caption fades away on its own.
+  useEffect(() => {
+    if (!peek) return;
+    const t = setTimeout(() => setPeek(false), 9000);
+    return () => clearTimeout(t);
+  }, [peek, messageCount]);
+
+  useEffect(() => {
+    if (expanded) setPeek(false);
+  }, [expanded]);
 
   // Desktop layering: a press inside the chat or prompt raises the chat; a press anywhere
   // else (a window, the dock, the desktop) sends it behind the windows.
@@ -259,6 +295,7 @@ export function AgentBar({
         ref={barRef}
         expanded={expanded}
         onExpandedChange={setExpanded}
+        peek={peek ? <PeekCaption onOpen={() => setExpanded(true)} /> : null}
         details={
           <>
             {replyBubble}
@@ -306,12 +343,14 @@ function AgentSheet({
   expanded,
   onExpandedChange,
   details,
+  peek,
   children,
 }: {
   ref: Ref<HTMLDivElement>;
   expanded: boolean;
   onExpandedChange(expanded: boolean): void;
   details: ReactNode;
+  peek: ReactNode;
   children: ReactNode;
 }) {
   const drag = useDragControls();
@@ -362,7 +401,33 @@ function AgentSheet({
           </motion.div>
         )}
       </AnimatePresence>
+      <AnimatePresence>{!expanded && peek}</AnimatePresence>
       <div className="flex justify-center">{children}</div>
     </motion.div>
+  );
+}
+
+/** The agent's latest words as a one-glance caption above the prompt (phone sheet, collapsed). */
+function PeekCaption({ onOpen }: { onOpen(): void }) {
+  const text = useAgent((s) => s.messages.findLast((m) => m.role === 'agent')?.text ?? '');
+  const plain = text
+    .replace(/^\s*[-•*]\s+/gm, '')
+    .replace(/[*_`#>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!plain) return null;
+  return (
+    <motion.button
+      type="button"
+      aria-label="Open the conversation"
+      onClick={onOpen}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 6, transition: { duration: 0.12 } }}
+      transition={SPRING}
+      className="line-clamp-2 w-full rounded-2xl bg-[var(--hover)] px-3.5 py-2 text-left text-[13.5px] leading-snug"
+    >
+      {plain}
+    </motion.button>
   );
 }

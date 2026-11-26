@@ -11,6 +11,8 @@ export interface ExecutorDeps {
   say(text: string): void;
   startTour(): void;
   reducedMotion: boolean;
+  /** Phones: how long to let a caption be read before the next step (0 or absent: no wait). */
+  sayDwellMs?(text: string): number;
 }
 
 const STEP_PAUSE_MS = 250;
@@ -108,8 +110,13 @@ export async function runPlan(
       await pause(STEP_PAUSE_MS, signal);
       if (signal.aborted) return 'interrupted';
     }
-    const ok = await step(actions[i]);
+    const a = actions[i];
+    const ok = await step(a);
     if (!ok || signal.aborted) return 'interrupted';
+    // Let a caption be read before the screen changes under it.
+    if (a.type === 'say' && i < actions.length - 1 && deps.sayDwellMs) {
+      await pause(deps.sayDwellMs(a.text), signal);
+    }
   }
   return 'done';
 }

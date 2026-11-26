@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { AgentBar } from './AgentBar';
 import { resetAgent, useAgent } from '../agentStore';
+import { resetOS, useOS } from '@/os/store';
 
 afterEach(() => {
   cleanup();
@@ -85,5 +86,22 @@ describe('AgentBar', () => {
     expect(screen.queryByRole('region', { name: 'Conversation with the agent' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Expand conversation' }));
     expect(screen.getByRole('button', { name: 'Minimize conversation' })).toBeInTheDocument();
+  });
+
+  it('phone sheet tucks away when the agent opens an app and shows replies as a caption', () => {
+    render(<AgentBar variant="sheet" onSubmit={() => {}} onTour={() => {}} />);
+    act(() => useAgent.getState().pushUser('open my blog'));
+    const sheet = () => document.querySelector('[data-variant="sheet"]')!;
+    expect(sheet()).toHaveAttribute('data-expanded', 'true');
+    act(() => {
+      useAgent.getState().setStatus('acting');
+      useOS.getState().openApp('pensieve');
+    });
+    expect(sheet()).toHaveAttribute('data-expanded', 'false');
+    act(() => useAgent.getState().setReply('Here is the blog.'));
+    expect(sheet()).toHaveAttribute('data-expanded', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Open the conversation' }));
+    expect(sheet()).toHaveAttribute('data-expanded', 'true');
+    resetOS();
   });
 });
