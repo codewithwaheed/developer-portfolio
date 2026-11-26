@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import type { FitReport } from './actions';
 
+/** A faint rule between one run's log lines and the next. */
+export const LOG_DIVIDER = '────────';
+
 export type AgentStatus = 'idle' | 'thinking' | 'acting';
 
 /** One bubble in the visitor's conversation with the agent (this session only). */
@@ -29,6 +32,8 @@ export interface AgentStoreActions {
   setStatus(status: AgentStatus): void;
   pushLog(line: string): void;
   clearLog(): void;
+  /** Replace the log (used to restore this browser session's log after a reload). */
+  setLog(lines: string[]): void;
   /** Show an agent reply: sets `reply` and appends it to the conversation ('' only hides). */
   setReply(text: string, fit?: FitReport): void;
   /** Append the visitor's question to the conversation. */
@@ -60,6 +65,7 @@ export const useAgent = create<AgentState & AgentStoreActions>()((set, get) => (
   setStatus: (status) => set({ status }),
   pushLog: (line) => set((s) => ({ log: [...s.log, line] })),
   clearLog: () => set({ log: [] }),
+  setLog: (log) => set({ log }),
   setReply: (reply, fit) =>
     set((s) =>
       reply

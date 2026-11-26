@@ -4,6 +4,7 @@ title: 'Senior Full-Stack Engineer'
 company: 'Renesis Tech'
 location: 'Lahore, PK'
 range: 'Jan 2022 - Jan 2023'
+logo: '/logos/renesis.png'
 url: 'https://renesistech.com'
 ---
 

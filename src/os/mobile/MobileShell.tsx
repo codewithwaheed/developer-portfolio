@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { IconChevronLeft, IconVolume, IconVolumeOff } from '@tabler/icons-react';
 import { siteConfig } from '@/config/site';
@@ -9,6 +9,8 @@ import { useOS, type WindowState } from '../store';
 import { APP_IDS, appMeta, type AppId } from '../apps/registry';
 import { AppGlyph } from '../apps/icons';
 import { formatClock } from '../shell/clock';
+import { StatusDot, useAvailability } from '../shell/AvailabilityPill';
+import { useNow } from '../shell/useNow';
 
 const SPRING = { type: 'spring', stiffness: 380, damping: 34, mass: 0.9 } as const;
 const COLUMNS = 4;
@@ -77,15 +79,10 @@ export function MobileShell({ agentStatus, renderApp }: Props) {
 
 function StatusBar({ agentStatus }: { agentStatus: 'idle' | 'thinking' }) {
   const muted = useSyncExternalStore(subscribeMuted, isMuted, () => true);
-  const [now, setNow] = useState<Date | null>(null);
-  const available = siteConfig.availability === 'open';
+  const now = useNow(CLOCK_TICK_MS);
+  const info = useAvailability(now);
+  const busy = siteConfig.availability === 'busy';
   const thinking = agentStatus === 'thinking';
-
-  useEffect(() => {
-    setNow(new Date());
-    const t = setInterval(() => setNow(new Date()), CLOCK_TICK_MS);
-    return () => clearInterval(t);
-  }, []);
 
   return (
     <header
@@ -93,19 +90,12 @@ function StatusBar({ agentStatus }: { agentStatus: 'idle' | 'thinking' }) {
       className="glass fixed inset-x-0 top-0 z-[1100] flex h-11 items-center justify-between rounded-none border-x-0 border-t-0 px-4 pt-[env(safe-area-inset-top)] text-[13px] select-none"
     >
       <time suppressHydrationWarning className="text-[15px] font-semibold tabular-nums">
-        {now ? formatClock(siteConfig.homeTimezone.tz, now) : '--:--'}
+        {now ? formatClock(undefined, now) : '--:--'}
       </time>
       <div className="flex items-center gap-2.5">
         <span className="flex items-center gap-1.5 text-[12px] text-[var(--fg-muted)]">
-          <span
-            aria-hidden
-            className="size-[7px] rounded-full"
-            style={{
-              background: available ? 'var(--ok)' : 'var(--fg-faint)',
-              boxShadow: available ? '0 0 8px var(--ok)' : undefined,
-            }}
-          />
-          {available ? 'open for work' : 'busy'}
+          <StatusDot state={busy ? 'offline' : (info?.state ?? 'offline')} />
+          {busy ? 'busy' : (info?.label ?? 'availability')}
         </span>
         <span
           aria-live="polite"
@@ -133,7 +123,8 @@ function StatusBar({ agentStatus }: { agentStatus: 'idle' | 'thinking' }) {
 
 function HomeScreen({ covered, reduce }: { covered: boolean; reduce: boolean }) {
   const openApp = useOS((s) => s.openApp);
-  const available = siteConfig.availability === 'open';
+  const info = useAvailability(useNow());
+  const busy = siteConfig.availability === 'busy';
 
   return (
     <motion.main
@@ -153,12 +144,8 @@ function HomeScreen({ covered, reduce }: { covered: boolean; reduce: boolean }) 
         </h1>
         <p className="mt-0.5 text-[14px] text-[var(--fg-muted)]">{siteConfig.title}</p>
         <p className="mt-3 flex items-center gap-1.5 text-[12.5px] text-[var(--fg-muted)]">
-          <span
-            aria-hidden
-            className="size-[7px] rounded-full"
-            style={{ background: available ? 'var(--ok)' : 'var(--fg-faint)' }}
-          />
-          {available ? 'Available for new work' : 'Currently busy'}
+          <StatusDot state={busy ? 'offline' : (info?.state ?? 'offline')} />
+          {busy ? 'Currently busy' : info ? `${info.label} · ${info.detail}` : 'Availability'}
         </p>
       </section>
 

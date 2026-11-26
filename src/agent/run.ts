@@ -1,9 +1,10 @@
 import { useOS } from '@/os/store';
-import { appMeta } from '@/os/apps/registry';
+import { appMeta, type AppId } from '@/os/apps/registry';
+import { tileLayout, type Slot } from '@/os/tile';
 import { isMobileViewport } from '@/os/mobile/useIsMobile';
 import type { AgentAction } from './actions';
 import { runPlan } from './executor';
-import { useAgent } from './agentStore';
+import { useAgent, LOG_DIVIDER } from './agentStore';
 import { cursor } from './ui/GhostCursor';
 import { TOUR } from './tour';
 
@@ -15,6 +16,7 @@ function prefersReducedMotion(): boolean {
   );
 }
 
+const LOG_MAX = 300;
 const HOME_SETTLE_MS = 350; // the home screen's spring back to full size
 const HOME_WAIT_FRAMES = 30;
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
@@ -36,9 +38,22 @@ async function goHome(reducedMotion: boolean): Promise<void> {
   if (!reducedMotion) await new Promise((r) => setTimeout(r, HOME_SETTLE_MS));
 }
 
-/** Open agent.log in the lower right, out of the way of the windows the agent opens. */
-function showAgentLog() {
+/** Apps a plan will put on screen, in the order it opens them. */
+function appsOf(actions: AgentAction[]): AppId[] {
+  const out: AppId[] = [];
+  const add = (id: AppId) => out.includes(id) || out.push(id);
+  for (const a of actions) {
+    if (a.type === 'open_app') add(a.app);
+    else if (a.type === 'open_project') add('projects');
+    else if (a.type === 'open_post') add('pensieve');
+  }
+  return out;
+}
+
+/** Open agent.log (in its tile when the plan spreads windows out, else the lower right). */
+function showAgentLog(slot?: Slot) {
   const os = useOS.getState();
+  if (slot) return os.openApp('agentlog', slot);
   if (os.windows.some((w) => w.id === 'agentlog')) return;
   const { w, h } = appMeta.agentlog.defaultSize;
   os.openApp('agentlog', {
@@ -67,14 +82,25 @@ export async function runAgentPlan(
   }
   const controller = useAgent.getState().controller;
 
-  useAgent.setState({ log: opts.initialLog ? [...opts.initialLog] : [] });
+  // The log keeps the whole session: each run is appended under a divider.
+  useAgent.setState((st) => ({
+    log: [...st.log, ...(st.log.length ? [LOG_DIVIDER] : []), ...(opts.initialLog ?? [])].slice(
+      -LOG_MAX,
+    ),
+  }));
   agent.setStatus('acting');
   const mobile = isMobileViewport();
   const reducedMotion = prefersReducedMotion();
-  // Phones are single-app: agent.log would cover the apps the agent opens.
-  if (!mobile && actions.some((a) => a.type !== 'say')) showAgentLog();
-
   const os = useOS.getState();
+  // A plan that opens several apps lays them out side by side so the desktop looks full.
+  const showLog = !mobile && actions.some((a) => a.type !== 'say');
+  const ids = appsOf(actions);
+  const slots = mobile
+    ? {}
+    : tileLayout(showLog ? [...ids, 'agentlog'] : ids, useOS.getState().viewport);
+  // Phones are single-app: agent.log would cover the apps the agent opens.
+  if (showLog) showAgentLog(slots.agentlog);
+
   const moveCursorTo = async (selector: string) => {
     if (mobile && selector.startsWith('[data-app-icon')) await goHome(reducedMotion);
     await cursor.moveTo(selector);
@@ -86,7 +112,7 @@ export async function runAgentPlan(
         moveCursorTo,
         click: () => cursor.click(),
         os: {
-          openApp: os.openApp,
+          openApp: (id: AppId) => os.openApp(id, slots[id]),
           closeApp: os.closeApp,
           setProjectFilter: os.setProjectFilter,
           openProject: os.openProject,

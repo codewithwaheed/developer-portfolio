@@ -23,12 +23,13 @@ afterEach(() => {
 });
 
 describe('AgentOS lock flow', () => {
-  it('wakes on Enter and opens the me window', async () => {
+  it('wakes on Enter without opening any app behind the lock', async () => {
     render(<AgentOS content={content} />);
     const lock = await screen.findByRole('dialog', { name: 'Lock screen' });
     expect(useOS.getState().windows).toHaveLength(0);
     fireEvent.keyDown(lock, { key: 'Enter' });
-    expect(useOS.getState().windows.map((w) => w.id)).toContain('me');
+    expect(screen.queryByRole('dialog', { name: 'Lock screen' })).toBeNull();
+    expect(useOS.getState().windows).toHaveLength(0);
   });
 });
 

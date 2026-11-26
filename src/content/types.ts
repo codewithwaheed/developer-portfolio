@@ -1,9 +1,20 @@
 export type ProjectTag = 'ai' | 'blockchain' | 'fintech' | 'web';
 
+export interface JobRole {
+  title: string;
+  /** e.g. "Jan 2023 - Mar 2025"; omitted until known */
+  range?: string;
+}
+
 export interface Job {
   slug: string;
+  /** The current (highest) title. */
   title: string;
+  /** Titles held at this company, newest first; only present when there was a promotion. */
+  roles?: JobRole[];
   company: string;
+  /** public path to the company logo */
+  logo?: string;
   location: string;
   range: string;
   url: string;

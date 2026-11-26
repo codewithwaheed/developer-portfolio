@@ -33,7 +33,7 @@ export function Lock({ onWake }: { onWake: () => void }) {
       className="glass fixed inset-0 z-[2000] flex cursor-pointer flex-col items-center justify-center rounded-none text-center outline-none"
     >
       <div className="text-[72px] leading-none font-light tabular-nums">
-        {formatClock(siteConfig.homeTimezone.tz, now)}
+        {formatClock(undefined, now)}
       </div>
       <div className="mt-6 text-[22px] font-medium">{siteConfig.name}</div>
       <div className="mt-1 text-[14px] opacity-70">{siteConfig.title}</div>

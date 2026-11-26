@@ -72,4 +72,18 @@ describe('AgentBar', () => {
     expect(screen.getByRole('status')).toHaveTextContent(reply);
     expect(visibleText()).toContain('show me your ai work');
   });
+
+  it('minimizes the chat to a pill, restores it, and toggles maximize', () => {
+    render(<AgentBar onSubmit={() => {}} onTour={() => {}} />);
+    act(() => {
+      useAgent.getState().pushUser('hi');
+      useAgent.getState().setReply('Hello there');
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Maximize conversation' }));
+    expect(screen.getByRole('button', { name: 'Restore size' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Minimize conversation' }));
+    expect(screen.queryByRole('region', { name: 'Conversation with the agent' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Expand conversation' }));
+    expect(screen.getByRole('button', { name: 'Minimize conversation' })).toBeInTheDocument();
+  });
 });

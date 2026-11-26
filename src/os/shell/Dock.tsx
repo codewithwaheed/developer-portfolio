@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
+  AnimatePresence,
   motion,
   useMotionValue,
   useReducedMotion,
@@ -15,8 +16,8 @@ import { APP_IDS, appMeta, type AppId } from '../apps/registry';
 import { AppGlyph } from '../apps/icons';
 
 const BASE = 48;
-const PEAK = 76;
-const REACH = 150;
+const PEAK = 80;
+const REACH = 140;
 
 const DOCK_APPS = APP_IDS.filter((id) => appMeta[id].inDock);
 
@@ -30,7 +31,7 @@ export function Dock() {
   return (
     <nav
       aria-label="Dock"
-      className="pointer-events-none fixed inset-x-0 bottom-3 z-[1000] flex justify-center"
+      className="pointer-events-none fixed inset-x-0 bottom-3 z-[1010] flex justify-center"
     >
       <motion.ul
         onMouseMove={(e) => mouseX.set(e.clientX)}
@@ -71,21 +72,45 @@ function DockItem({
     return r ? mx - (r.left + r.width / 2) : Infinity;
   });
   const target = useTransform(distance, [-REACH, 0, REACH], [BASE, reduce ? BASE : PEAK, BASE]);
-  const size = useSpring(target, { mass: 0.12, stiffness: 190, damping: 13 });
+  const size = useSpring(target, { mass: 0.1, stiffness: 280, damping: 19 });
+  const [hovered, setHovered] = useState(false);
+  const [launching, setLaunching] = useState(false);
 
   const onClick = () => {
     play('dock');
     const s = useOS.getState();
     const win = s.windows.find((w) => w.id === id);
     if (win && !win.minimized && s.focused === id) s.minimizeApp(id);
-    else s.openApp(id);
+    else {
+      // A hop while the app launches, like a real dock.
+      if (!win && !reduce) {
+        setLaunching(true);
+        setTimeout(() => setLaunching(false), 700);
+      }
+      s.openApp(id);
+    }
   };
 
   return (
-    <li className="group relative flex flex-col items-center">
-      <span className="glass glass-strong pointer-events-none absolute -top-11 rounded-lg px-2.5 py-1 text-[12px] font-medium whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-        {appMeta[id].title}
-      </span>
+    <li
+      className="relative flex flex-col items-center"
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
+    >
+      <AnimatePresence>
+        {hovered && (
+          <motion.span
+            initial={{ opacity: 0, y: 6, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.96, transition: { duration: 0.1 } }}
+            transition={{ type: 'spring', stiffness: 520, damping: 30 }}
+            className="glass glass-strong pointer-events-none absolute rounded-lg px-2.5 py-1 text-[12px] font-medium whitespace-nowrap"
+            style={{ top: -46 }}
+          >
+            {appMeta[id].title}
+          </motion.span>
+        )}
+      </AnimatePresence>
       <motion.button
         ref={ref}
         type="button"
@@ -93,6 +118,8 @@ function DockItem({
         aria-label={appMeta[id].title}
         onClick={onClick}
         whileTap={{ scale: 0.88 }}
+        animate={{ y: launching ? [0, -22, 0, -12, 0, -4, 0] : 0 }}
+        transition={launching ? { duration: 0.7, ease: 'easeOut' } : undefined}
         style={{ width: size, height: size }}
         className="relative grid place-items-center rounded-[28%] outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
       >
@@ -100,8 +127,8 @@ function DockItem({
       </motion.button>
       <span
         aria-hidden
-        className={`absolute -bottom-[7px] size-1 rounded-full bg-[var(--fg)] transition-opacity ${
-          running ? 'opacity-70' : 'opacity-0'
+        className={`absolute -bottom-[7px] size-1 rounded-full bg-[var(--fg)] transition-[opacity,transform] duration-300 ${
+          running ? 'scale-100 opacity-70' : 'scale-0 opacity-0'
         }`}
       />
     </li>

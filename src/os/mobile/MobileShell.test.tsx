@@ -50,10 +50,8 @@ describe('AgentOS Mobile', () => {
     render(<AgentOS content={content} />);
     expect(screen.queryByRole('navigation', { name: 'Dock' })).toBeNull();
 
-    // Waking opens me.md full-screen; Back returns to the home screen.
+    // Waking lands on the home screen; no app opens behind the lock.
     fireEvent.keyDown(await screen.findByRole('dialog', { name: 'Lock screen' }), { key: 'Enter' });
-    expect(screen.getByRole('dialog', { name: 'me.md' })).toHaveStyle({ inset: '0' });
-    await user.click(screen.getByRole('button', { name: 'Back' }));
     expect(state().windows).toHaveLength(0);
 
     const grid = screen.getByRole('grid', { name: 'Home screen' });
@@ -81,7 +79,7 @@ describe('AgentOS Mobile', () => {
   it('has a status bar with availability and a mute toggle', () => {
     render(<AgentOS content={content} />);
     const bar = screen.getByRole('banner', { name: 'Status bar' });
-    expect(within(bar).getByText('open for work')).toBeInTheDocument();
+    expect(within(bar).getByText(/online now|just got off work|offline/i)).toBeInTheDocument();
     expect(within(bar).getByRole('button', { name: /mute sounds/i })).toBeInTheDocument();
   });
   it('runs agent plans one app at a time, without agent.log, and Back goes home', async () => {

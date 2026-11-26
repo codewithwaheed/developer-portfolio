@@ -30,6 +30,7 @@
     0 40px 90px -24px rgba(40, 30, 110, 0.42), 0 14px 32px -14px rgba(40, 30, 110, 0.3);
 
   --surface: rgba(255, 255, 255, 0.62);
+  --solid-bg: #f7f6ff;
   --hover: rgba(30, 24, 80, 0.07);
   --control: rgba(30, 24, 80, 0.06);
 
@@ -67,6 +68,7 @@
     0 44px 100px -24px rgba(0, 0, 0, 0.75), 0 16px 36px -14px rgba(0, 0, 0, 0.6);
 
   --surface: rgba(16, 14, 32, 0.5);
+  --solid-bg: #17142b;
   --hover: rgba(255, 255, 255, 0.08);
   --control: rgba(255, 255, 255, 0.07);
 
@@ -91,6 +93,7 @@
     --glass-bg: rgba(24, 21, 46, 0.52);
     --glass-border: rgba(255, 255, 255, 0.1);
     --surface: rgba(16, 14, 32, 0.5);
+    --solid-bg: #17142b;
     --wall-base: #0b0a1d;
     --wall-a: #5a37ff;
     --wall-b: #1f5bff;
@@ -137,6 +140,16 @@ body {
 
 .glass-strong {
   background: var(--glass-bg-strong);
+}
+
+/* Fully opaque panel for menus and popovers that sit over busy content. */
+.glass-solid {
+  background: var(--solid-bg);
+}
+
+/* Fields that draw their own focus ring on a wrapper: no second outline on the control. */
+.focus-bare:focus-visible {
+  outline: none;
 }
 
 /* ---------------- Wallpaper ---------------- */

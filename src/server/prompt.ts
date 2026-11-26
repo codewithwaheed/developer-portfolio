@@ -30,7 +30,14 @@ export function buildSystemPrompt(content: PortfolioContent): string {
   const { about, jobs, projects, posts } = content;
   const jobLines = jobs.map(
     (j) =>
-      `- ${j.title} at ${j.company} (${j.range}, ${j.location}): ${j.bullets.map(text).join(' | ')}`,
+      `- ${
+        j.roles?.length
+          ? `${j.roles
+              .map((r) => r.title)
+              .reverse()
+              .join(' -> ')} (promoted; now ${j.title})`
+          : j.title
+      } at ${j.company} (${j.range}, ${j.location}): ${j.bullets.map(text).join(' | ')}`,
   );
   const projectLines = projects.map(
     (p) =>

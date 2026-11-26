@@ -5,10 +5,13 @@ import { motion, useReducedMotion } from 'motion/react';
 import {
   IconAlertTriangle,
   IconCalendarEvent,
+  IconArrowsDiagonal,
+  IconArrowsDiagonalMinimize2,
   IconCircleCheck,
   IconFolder,
+  IconMessage,
+  IconMinus,
   IconTrash,
-  IconX,
 } from '@tabler/icons-react';
 import { useOS } from '@/os/store';
 import type { FitReport } from '../actions';
@@ -195,11 +198,23 @@ function Typing() {
 
 /** The conversation thread above the prompt bar (or inside the phone sheet). */
 export function ChatPanel({
-  onClose,
+  onMinimize,
+  minimized = false,
+  onRestore,
+  maximized = false,
+  onToggleMaximize,
+  maxHeight,
   projectTitles,
   compact = false,
 }: {
-  onClose?: () => void;
+  /** Desktop only: collapse the thread to a small pill. */
+  onMinimize?: () => void;
+  minimized?: boolean;
+  onRestore?: () => void;
+  maximized?: boolean;
+  onToggleMaximize?: () => void;
+  /** CSS max-height while maximized (keeps the panel clear of the menu bar). */
+  maxHeight?: string;
   projectTitles: Record<string, string>;
   compact?: boolean;
 }) {
@@ -218,6 +233,29 @@ export function ChatPanel({
   if (messages.length === 0 && status !== 'thinking') return null;
   const latest = messages.at(-1);
 
+  if (minimized) {
+    return (
+      <motion.button
+        type="button"
+        aria-label="Expand conversation"
+        onClick={onRestore}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 6, transition: { duration: 0.12 } }}
+        transition={SPRING}
+        className="glass glass-strong pointer-events-auto flex h-9 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-medium hover:bg-[var(--accent-soft)]"
+      >
+        <IconMessage aria-hidden size={15} className="text-[var(--accent)]" />
+        AgentOS
+        <span className="rounded-full bg-[var(--control)] px-1.5 text-[11px] text-[var(--fg-muted)]">
+          {messages.length}
+        </span>
+      </motion.button>
+    );
+  }
+
+  const iconBtn =
+    'grid size-6 place-items-center rounded-md hover:bg-[var(--hover)] hover:text-[var(--fg)]';
   return (
     <motion.section
       aria-label="Conversation with the agent"
@@ -225,7 +263,10 @@ export function ChatPanel({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 8, transition: { duration: 0.15 } }}
       transition={SPRING}
-      className={`glass glass-strong pointer-events-auto flex w-full max-w-[560px] flex-col rounded-2xl ${compact ? '' : 'max-h-[min(52vh,520px)]'}`}
+      style={maximized && maxHeight ? { height: maxHeight } : undefined}
+      className={`glass glass-strong pointer-events-auto flex w-full flex-col rounded-2xl ${
+        maximized ? 'max-w-[760px]' : 'max-w-[560px]'
+      } ${compact ? '' : maximized ? '' : 'max-h-[min(52vh,520px)]'}`}
     >
       <header className="flex items-center justify-between px-3.5 pt-2.5 pb-1 text-[11.5px] text-[var(--fg-muted)]">
         <span className="font-medium">AgentOS</span>
@@ -234,18 +275,32 @@ export function ChatPanel({
             type="button"
             aria-label="Clear conversation"
             onClick={() => useAgent.getState().clearChat()}
-            className="grid size-6 place-items-center rounded-md hover:bg-[var(--hover)] hover:text-[var(--fg)]"
+            className={iconBtn}
           >
             <IconTrash size={13} stroke={2} />
           </button>
-          {onClose && (
+          {onToggleMaximize && (
             <button
               type="button"
-              aria-label="Hide conversation"
-              onClick={onClose}
-              className="grid size-6 place-items-center rounded-md hover:bg-[var(--hover)] hover:text-[var(--fg)]"
+              aria-label={maximized ? 'Restore size' : 'Maximize conversation'}
+              onClick={onToggleMaximize}
+              className={iconBtn}
             >
-              <IconX size={13} stroke={2.2} />
+              {maximized ? (
+                <IconArrowsDiagonalMinimize2 size={13} stroke={2.2} />
+              ) : (
+                <IconArrowsDiagonal size={13} stroke={2.2} />
+              )}
+            </button>
+          )}
+          {onMinimize && (
+            <button
+              type="button"
+              aria-label="Minimize conversation"
+              onClick={onMinimize}
+              className={iconBtn}
+            >
+              <IconMinus size={13} stroke={2.4} />
             </button>
           )}
         </span>

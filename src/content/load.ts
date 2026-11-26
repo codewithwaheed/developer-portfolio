@@ -52,7 +52,9 @@ async function loadJobs(): Promise<Job[]> {
       return {
         slug,
         title: data.title,
+        ...(Array.isArray(data.roles) && data.roles.length > 1 ? { roles: data.roles } : {}),
         company: data.company,
+        ...(typeof data.logo === 'string' ? { logo: data.logo } : {}),
         location: data.location,
         range: data.range,
         url: data.url,

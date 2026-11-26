@@ -88,7 +88,7 @@ export function TerminalApp({ content }: { content: PortfolioContent }) {
           spellCheck={false}
           autoComplete="off"
           autoCapitalize="off"
-          className="min-w-0 flex-1 bg-transparent text-[#e6e4ff] caret-[#8ea2ff] outline-none"
+          className="focus-bare min-w-0 flex-1 bg-transparent text-[#e6e4ff] caret-[#8ea2ff] outline-none"
         />
       </div>
       <div ref={endRef} />

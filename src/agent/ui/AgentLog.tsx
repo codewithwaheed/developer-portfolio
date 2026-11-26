@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useAgent } from '../agentStore';
+import { useAgent, LOG_DIVIDER } from '../agentStore';
 
 /** agent.log: the agent's steps, live. */
 export function AgentLog() {
@@ -22,6 +22,13 @@ export function AgentLog() {
         <li className="text-[var(--fg-faint)]">No agent activity yet. Ask something below.</li>
       )}
       {log.map((line, i) => {
+        if (line === LOG_DIVIDER) {
+          return (
+            <li key={i} aria-hidden className="select-none text-[var(--fg-faint)]">
+              {line}
+            </li>
+          );
+        }
         const done = line.startsWith('✓');
         return (
           <li key={i} className="whitespace-pre-wrap break-words">

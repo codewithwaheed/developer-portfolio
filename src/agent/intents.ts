@@ -1,4 +1,4 @@
-import type { PortfolioContent, Project, ProjectTag } from '@/content/types';
+import type { Job, PortfolioContent, Project, ProjectTag } from '@/content/types';
 import type { AppId } from '@/os/apps/registry';
 import type { AgentAction } from './actions';
 
@@ -114,6 +114,16 @@ const plain = (html: string) =>
 const list = (xs: string[]) =>
   xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`;
 
+/** "Senior → Staff Software Engineer" style career path, or just the title. */
+function roleLine(j: Job): string {
+  return j.roles?.length
+    ? [...j.roles]
+        .reverse()
+        .map((r) => r.title)
+        .join(' → ')
+    : j.title;
+}
+
 function buildIntents(c: PortfolioContent): Intent[] {
   const companies = c.jobs.map((j) => j.company);
   const current = c.jobs[0];
@@ -155,7 +165,7 @@ function buildIntents(c: PortfolioContent): Intent[] {
       plan: [
         open('experience'),
         say(
-          `Waheed has worked at ${list(companies)}:\n${c.jobs.map((j) => `- **${j.title}**, ${j.company} (${j.range})`).join('\n')}\nClick a role in experience.app to see what he shipped there.`,
+          `Waheed has worked at ${list(companies)}:\n${c.jobs.map((j) => `- **${roleLine(j)}**, ${j.company} (${j.range})`).join('\n')}\nClick a role in experience.app to see what he shipped there.`,
         ),
       ],
     },
@@ -313,7 +323,12 @@ function buildIntents(c: PortfolioContent): Intent[] {
         open('experience'),
         open('projects'),
         { type: 'filter_projects', company: spelled },
-        say(`Waheed was ${j.title} at ${j.company} (${j.range}). Here's what he built there.`),
+        say(
+          `At **${j.company}** Waheed ${j.roles?.length ? `grew from ${list([...j.roles].reverse().map((r) => r.title))}` : `was ${j.title}`} (${j.range}). Highlights:\n${j.bullets
+            .slice(0, 3)
+            .map((b) => `- ${b}`)
+            .join('\n')}\nHis projects from there are open now.`,
+        ),
       ],
     });
   }

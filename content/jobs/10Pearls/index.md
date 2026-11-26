@@ -4,7 +4,11 @@ title: 'Staff Software Engineer'
 company: '10Pearls'
 location: 'Lahore, PK'
 range: 'Jan 2023 - Present'
+logo: '/logos/10pearls.png'
 url: 'https://10pearls.com'
+roles:
+  - title: 'Staff Software Engineer'
+  - title: 'Senior Software Engineer'
 ---
 
 - Led the development of scalable, TypeScript-based micro frontends for high-traffic applications, improving code reusability by 35% and enabling independent deployments.

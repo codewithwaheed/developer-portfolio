@@ -31,7 +31,8 @@ export function Window({ id, children }: { id: AppId; children: ReactNode }) {
   const y = useMotionValue(win?.y ?? 0);
 
   const meta = appMeta[id];
-  const { w: width, h: height } = meta.defaultSize;
+  const width = win?.w ?? meta.defaultSize.w;
+  const height = win?.h ?? meta.defaultSize.h;
 
   // Follow store position (agent moves, viewport re-clamps, post-drag clamp).
   const wx = win?.x;

@@ -8,9 +8,9 @@ import { isMuted, setMuted, subscribeMuted } from '@/sound/sound';
 import { memory } from '@/agent/memory';
 import { useOS } from '../store';
 import { useTheme } from '../theme';
-import { formatClock } from './clock';
-
-const CLOCK_TICK_MS = 30_000;
+import { formatClock, tzCity, visitorTimeZone } from './clock';
+import { AvailabilityPill } from './AvailabilityPill';
+import { useNow } from './useNow';
 
 type MenuItem =
   | { label: string; onSelect: () => void; disabled?: boolean }
@@ -25,16 +25,10 @@ interface Props {
 export function MenuBar({ agentStatus = 'idle', onRestart = () => {} }: Props) {
   const { theme, toggle } = useTheme();
   const muted = useSyncExternalStore(subscribeMuted, isMuted, () => true);
-  const [now, setNow] = useState<Date | null>(null);
+  const now = useNow();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setNow(new Date());
-    const t = setInterval(() => setNow(new Date()), CLOCK_TICK_MS);
-    return () => clearInterval(t);
-  }, []);
 
   useEffect(() => {
     if (!openMenu && !aboutOpen) return;
@@ -117,8 +111,13 @@ export function MenuBar({ agentStatus = 'idle', onRestart = () => {} }: Props) {
     },
   ];
 
-  const clocks = [siteConfig.homeTimezone, ...siteConfig.clientTimezones];
-  const available = siteConfig.availability === 'open';
+  // His clock first, then the visitor's own, labelled with their city (from the browser).
+  const [visitorTz, setVisitorTz] = useState<string | null>(null);
+  useEffect(() => setVisitorTz(visitorTimeZone()), []);
+  const clocks: { label: string; tz: string | undefined }[] = [
+    siteConfig.homeTimezone,
+    { label: visitorTz ? tzCity(visitorTz) : 'Local', tz: undefined },
+  ];
 
   return (
     <div
@@ -150,7 +149,7 @@ export function MenuBar({ agentStatus = 'idle', onRestart = () => {} }: Props) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -2, transition: { duration: 0.1 } }}
                   transition={{ type: 'spring', stiffness: 520, damping: 34 }}
-                  className="glass glass-strong absolute top-[26px] left-0 min-w-52 origin-top-left rounded-xl p-1.5"
+                  className="glass glass-strong glass-solid absolute top-[26px] left-0 min-w-52 origin-top-left rounded-xl p-1.5"
                 >
                   {m.items.map((item, i) => (
                     <MenuRow key={i} item={item} onDone={() => setOpenMenu(null)} />
@@ -177,22 +176,14 @@ export function MenuBar({ agentStatus = 'idle', onRestart = () => {} }: Props) {
           )}
         </IconButton>
 
-        <span className="mx-1.5 flex items-center gap-1.5" title="Availability">
-          <span
-            aria-hidden
-            className="size-[7px] rounded-full"
-            style={{
-              background: available ? 'var(--ok)' : 'var(--fg-faint)',
-              boxShadow: available ? '0 0 8px var(--ok)' : undefined,
-            }}
-          />
-          {available ? 'open for work' : 'busy'}
-        </span>
+        <AvailabilityPill now={now} />
 
         <span className="mx-1.5 flex items-center gap-3 tabular-nums" aria-label="Clocks">
           {clocks.map((c, i) => (
-            <span key={c.label} className={i === 0 ? '' : 'text-[var(--fg-muted)]'}>
-              <span className="mr-1 text-[11px] font-medium tracking-wide text-[var(--fg-muted)]">
+            <span key={c.label}>
+              <span
+                className={`mr-1 text-[11px] font-medium tracking-wide uppercase ${i === 0 ? 'text-[var(--fg-muted)]' : 'text-[var(--accent)]'}`}
+              >
                 {c.label}
               </span>
               <time suppressHydrationWarning>{now ? formatClock(c.tz, now) : '--:--'}</time>
@@ -222,7 +213,7 @@ export function MenuBar({ agentStatus = 'idle', onRestart = () => {} }: Props) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-            className="glass glass-strong absolute top-9 left-2 w-72 rounded-2xl p-5"
+            className="glass glass-strong glass-solid absolute top-9 left-2 w-72 rounded-2xl p-5"
           >
             <p className="text-[15px] font-semibold">
               <span className="text-[var(--accent)]">◆</span> AgentOS

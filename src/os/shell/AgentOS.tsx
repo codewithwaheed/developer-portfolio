@@ -107,6 +107,32 @@ export function AgentOS({
     };
   }, [content]);
 
+  // agent.log survives a reload within this browser session (sessionStorage).
+  useEffect(() => {
+    const KEY = 'agentos.log';
+    try {
+      const saved = JSON.parse(window.sessionStorage.getItem(KEY) ?? '[]');
+      if (
+        Array.isArray(saved) &&
+        saved.length &&
+        saved.every((l) => typeof l === 'string') &&
+        useAgent.getState().log.length === 0
+      ) {
+        useAgent.getState().setLog(saved);
+      }
+    } catch {
+      // storage blocked: the log just starts empty
+    }
+    return useAgent.subscribe((s, prev) => {
+      if (s.log === prev.log) return;
+      try {
+        window.sessionStorage.setItem(KEY, JSON.stringify(s.log.slice(-300)));
+      } catch {
+        // ignore
+      }
+    });
+  }, []);
+
   useEffect(() => {
     const { setViewport, openApp } = useOS.getState();
     const sync = () => setViewport(window.innerWidth, window.innerHeight);
@@ -161,7 +187,6 @@ export function AgentOS({
   const onWake = useCallback(() => {
     play('wake');
     setPhase('desktop');
-    useOS.getState().openApp('me');
   }, []);
   const onRestart = useCallback(() => setPhase(prefersReducedMotion() ? 'lock' : 'boot'), []);
   const onAsk = useCallback((question: string) => void ask(question), []);

@@ -51,4 +51,21 @@ describe('<ExperienceApp>', () => {
     expect(row('10Pearls')).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText(/micro frontends/)).toBeVisible();
   });
+
+  it('shows the promotion path for a role with several titles', async () => {
+    const user = userEvent.setup();
+    render(
+      <ExperienceApp
+        jobs={[
+          {
+            ...jobs[0],
+            roles: [{ title: 'Staff Software Engineer' }, { title: 'Senior Software Engineer' }],
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText('promoted')).toBeInTheDocument();
+    await user.click(row('10Pearls'));
+    expect(screen.getByText('Senior Software Engineer')).toBeVisible();
+  });
 });

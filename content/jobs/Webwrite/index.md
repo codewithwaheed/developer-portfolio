@@ -3,6 +3,7 @@ title: 'Full Stack Engineer'
 company: 'WebWrite'
 location: 'Lahore, PK'
 range: 'Apr 2019 - Dec 2021'
+logo: '/logos/webwrite.png'
 url: 'https://webwrite.co'
 date: '1'
 ---

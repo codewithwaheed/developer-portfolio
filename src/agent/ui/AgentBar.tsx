@@ -21,6 +21,8 @@ export const DEFAULT_SUGGESTIONS = [
 
 const SPRING = { type: 'spring', stiffness: 420, damping: 32 } as const;
 const SHEET_SPRING = { type: 'spring', stiffness: 360, damping: 34, mass: 0.9 } as const;
+/** Distance from the screen bottom to the prompt bar: clears the dock and its hover pop. */
+const BAR_BOTTOM = 104;
 const SWIPE_PX = 36;
 const SWIPE_VELOCITY = 300;
 
@@ -52,6 +54,8 @@ export function AgentBar({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
+  const [minimized, setMinimized] = useState(false);
+  const [maximized, setMaximized] = useState(false);
   // The chat floats like a window: above the apps while the visitor is using it, beneath
   // them once they click anywhere else, so it never traps the desktop.
   const chatRef = useRef<HTMLDivElement>(null);
@@ -62,6 +66,7 @@ export function AgentBar({
   useEffect(() => {
     if (messageCount > 0) {
       setChatOpen(true);
+      setMinimized(false);
       setExpanded(true);
       setRaised(true);
     }
@@ -147,7 +152,12 @@ export function AgentBar({
           key="chat"
           compact={variant === 'sheet'}
           projectTitles={projectTitles}
-          onClose={variant === 'bar' ? () => setChatOpen(false) : undefined}
+          minimized={variant === 'bar' && minimized}
+          onMinimize={variant === 'bar' ? () => setMinimized(true) : undefined}
+          onRestore={() => setMinimized(false)}
+          maximized={maximized}
+          onToggleMaximize={variant === 'bar' ? () => setMaximized((m) => !m) : undefined}
+          maxHeight={`calc(100vh - ${BAR_BOTTOM + barHeight + 8 + 44}px)`}
         />
       )}
     </AnimatePresence>
@@ -205,7 +215,7 @@ export function AgentBar({
             e.currentTarget.blur();
           }
         }}
-        className="max-h-[120px] min-w-0 flex-1 resize-none self-center bg-transparent py-1 text-[14px] leading-5 outline-none placeholder:text-[var(--fg-faint)]"
+        className="focus-bare max-h-[120px] min-w-0 flex-1 resize-none self-center bg-transparent py-1 text-[14px] leading-5 outline-none placeholder:text-[var(--fg-faint)]"
       />
       <kbd className="hidden shrink-0 rounded-md bg-[var(--control)] px-1.5 py-0.5 font-sans text-[11px] text-[var(--fg-muted)] sm:block">
         ⌘K
@@ -269,7 +279,7 @@ export function AgentBar({
       <div
         ref={chatRef}
         data-agent-chat
-        style={{ bottom: 92 + barHeight + 8, zIndex: raised ? 1000 : 5 }}
+        style={{ bottom: BAR_BOTTOM + barHeight + 8, zIndex: raised ? 1000 : 5 }}
         className="pointer-events-none fixed inset-x-0 flex justify-center px-4"
       >
         {replyBubble}
@@ -278,7 +288,7 @@ export function AgentBar({
         ref={barRef}
         data-agent-bar
         data-variant="bar"
-        className="pointer-events-none fixed inset-x-0 bottom-[92px] z-[1000] flex flex-col items-center gap-2 px-4"
+        className="pointer-events-none fixed inset-x-0 bottom-[104px] z-[1000] flex flex-col items-center gap-2 px-4"
       >
         {chips}
         <div className="flex w-full max-w-[680px] items-stretch gap-2">

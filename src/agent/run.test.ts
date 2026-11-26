@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { resetOS, useOS } from '@/os/store';
-import { resetAgent, useAgent } from './agentStore';
+import { LOG_DIVIDER, resetAgent, useAgent } from './agentStore';
 import { runAgentPlan } from './run';
 
 afterEach(() => {
@@ -52,12 +52,11 @@ describe('runAgentPlan', () => {
     expect(useOS.getState().windows).toEqual([]);
   });
 
-  it('seeds agent.log with initialLog instead of clearing it', async () => {
+  it('keeps earlier agent.log lines and appends a new run under a divider', async () => {
     useAgent.getState().pushLog('old line');
     const signal = useAgent.getState().start();
     await runAgentPlan([{ type: 'say', text: 'hi' }], { signal, initialLog: ['✓ understood: x'] });
-    expect(useAgent.getState().log[0]).toBe('✓ understood: x');
-    expect(useAgent.getState().log).not.toContain('old line');
+    expect(useAgent.getState().log).toEqual(['old line', LOG_DIVIDER, '✓ understood: x']);
   });
 });
 
