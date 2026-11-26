@@ -133,7 +133,9 @@ export async function runAgentPlan(
       {
         moveCursorTo,
         click,
-        sayDwellMs: mobile ? (text) => Math.min(6000, Math.max(2400, text.length * 45)) : undefined,
+        sayDwellMs: mobile
+          ? (text) => Math.min(10_000, Math.max(5500, text.length * 90))
+          : undefined,
         os: {
           openApp: (id: AppId) => os.openApp(id, slots[id]),
           closeApp: os.closeApp,

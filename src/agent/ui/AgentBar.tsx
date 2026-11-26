@@ -100,7 +100,7 @@ export function AgentBar({
   // A caption fades away on its own.
   useEffect(() => {
     if (!peek) return;
-    const t = setTimeout(() => setPeek(false), 9000);
+    const t = setTimeout(() => setPeek(false), 14_000);
     return () => clearTimeout(t);
   }, [peek, messageCount]);
 
