@@ -323,6 +323,16 @@ describe('ask: conversation', () => {
     expect(sendBeacon).toHaveBeenCalled();
   });
 
+  it('says why the AI is unavailable instead of passing a keyword match off as the answer', async () => {
+    fetchMock.mockResolvedValueOnce(
+      json({ source: 'fallback', reason: 'visitor_cap', text: FALLBACK_TEXT }),
+    );
+    await ask('is fintech payments work on a java backend role a fit for him please');
+    const reply = useAgent.getState().reply;
+    expect(reply).toMatch(/free AI answers/);
+    expect(reply).toMatch(/closest thing/i);
+  });
+
   it('attaches a validated fit report to the reply', async () => {
     fetchMock.mockResolvedValueOnce(
       json({

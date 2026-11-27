@@ -31,4 +31,14 @@ describe('<ProjectsApp> detail links', () => {
       expect(l).toHaveAttribute('rel', expect.stringContaining('noreferrer'));
     }
   });
+
+  it('opens the first project by default on desktop', () => {
+    render(
+      <ProjectsApp
+        projects={[project, { ...project, id: 'two', title: 'Two', featured: false }]}
+      />,
+    );
+    expect(screen.getByRole('heading', { name: 'Bot' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bot' })).toHaveAttribute('aria-current', 'true');
+  });
 });

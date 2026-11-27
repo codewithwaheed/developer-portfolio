@@ -1,6 +1,7 @@
 import type { PortfolioContent } from '@/content/types';
 import {
   FALLBACK_TEXT,
+  type AgentAction,
   QUESTION_MAX,
   sanitizeActions,
   sanitizeFit,
@@ -53,6 +54,26 @@ function fallback(signal: AbortSignal): void {
   useAgent.setState({ status: 'idle', controller: undefined, fallback: true });
 }
 
+/** Why the model could not answer, in the agent's voice. */
+function noticeFor(reason?: string): string {
+  const why =
+    reason === 'visitor_cap'
+      ? "You've used today's free AI answers, so I can't work that one out properly."
+      : reason === 'daily_cap' || reason === 'quota'
+        ? "My AI is at capacity for today, so I can't work that one out properly."
+        : "My AI isn't reachable right now, so I can't work that one out properly.";
+  return `${why} The closest thing I can show you:`;
+}
+
+/** Put `notice` in front of the plan's first spoken line (or add one). */
+function withNotice(actions: AgentAction[], notice: string): AgentAction[] {
+  const i = actions.findIndex((a) => a.type === 'say');
+  if (i < 0) return [{ type: 'say', text: notice }, ...actions];
+  return actions.map((a, j) =>
+    j === i && a.type === 'say' ? { ...a, text: `${notice}\n\n${a.text}` } : a,
+  );
+}
+
 /** The conversation so far (before this question), as context for follow-ups. */
 function historyBefore(question: string): { role: 'user' | 'agent'; text: string }[] {
   const msgs = useAgent.getState().messages;
@@ -70,9 +91,9 @@ export async function ask(question: string): Promise<void> {
   const signal = useAgent.getState().start();
 
   const scripted = content ? matchIntent(q, content) : null;
-  const runScripted = async (match: NonNullable<typeof scripted>) => {
+  const runScripted = async (match: NonNullable<typeof scripted>, notice?: string) => {
     beacon(q, match.id);
-    await runAgentPlan(match.actions, {
+    await runAgentPlan(notice ? withNotice(match.actions, notice) : match.actions, {
       signal,
       initialLog: [`✓ understood: ${match.id}`],
     });
@@ -84,9 +105,11 @@ export async function ask(question: string): Promise<void> {
     return;
   }
 
-  const unavailable = async () => {
+  const unavailable = async (reason?: string) => {
     if (scripted && !signal.aborted && useAgent.getState().controller?.signal === signal) {
-      await runScripted(scripted);
+      // A long question was meant for the model: say so, rather than pass a keyword match off
+      // as an answer to it.
+      await runScripted(scripted, noticeFor(reason));
     } else {
       fallback(signal);
     }
@@ -101,12 +124,13 @@ export async function ask(question: string): Promise<void> {
     });
     const data = (await res.json()) as {
       source?: string;
+      reason?: string;
       text?: string;
       actions?: unknown;
       fit?: unknown;
     };
     if (signal.aborted) return;
-    if (data.source !== 'gemini' && data.source !== 'cache') return unavailable();
+    if (data.source !== 'gemini' && data.source !== 'cache') return unavailable(data.reason);
 
     const known = knownOf(content);
     const actions = sanitizeActions(data.actions, known);
@@ -118,6 +142,6 @@ export async function ask(question: string): Promise<void> {
     }
     await runAgentPlan(actions, { signal });
   } catch {
-    if (!signal.aborted) await unavailable();
+    if (!signal.aborted) await unavailable('error');
   }
 }

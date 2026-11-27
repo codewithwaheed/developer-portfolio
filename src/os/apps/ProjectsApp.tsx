@@ -95,7 +95,9 @@ export function ProjectsApp({ projects }: { projects: Project[] }) {
   const shown = filterProjects(projects, filter);
   const featured = shown.filter((p) => p.featured);
   const archive = shown.filter((p) => !p.featured);
-  const selected = projects.find((p) => p.id === openId);
+  // Desktop opens with the first project shown, so the detail pane is never empty.
+  const selected =
+    projects.find((p) => p.id === openId) ?? (isMobile ? undefined : (featured[0] ?? archive[0]));
   const closeProject = useOS((s) => s.closeProject);
 
   // Phone: one pane at a time. The list fills the screen; a project opens full size
@@ -160,7 +162,7 @@ export function ProjectsApp({ projects }: { projects: Project[] }) {
         </select>
         <div className="flex flex-col gap-0.5">
           {featured.map((p) => (
-            <Row key={p.id} p={p} roomy={isMobile} selected={p.id === openId} />
+            <Row key={p.id} p={p} roomy={isMobile} selected={p.id === selected?.id} />
           ))}
         </div>
         {archive.length > 0 && (
@@ -168,7 +170,7 @@ export function ProjectsApp({ projects }: { projects: Project[] }) {
             <p className="px-2.5 pb-1 font-mono text-[11px] text-[var(--fg-faint)]">archive/</p>
             <div className="flex flex-col gap-0.5">
               {archive.map((p) => (
-                <Row key={p.id} p={p} roomy={isMobile} selected={p.id === openId} />
+                <Row key={p.id} p={p} roomy={isMobile} selected={p.id === selected?.id} />
               ))}
             </div>
           </div>
